@@ -1,0 +1,16 @@
+const $=(s,e=document)=>e.querySelector(s),$$=(s,e=document)=>[...e.querySelectorAll(s)];
+const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
+$$('.l-h1 .w').forEach((w,i)=>w.style.setProperty('--i',i));
+const nav=$('#nav');addEventListener('scroll',()=>nav.classList.toggle('sc',scrollY>20),{passive:true});
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.15});
+$$('.rv').forEach(el=>{el.style.setProperty('--d',(el.dataset.d||0)+'ms');io.observe(el)});
+const co=new IntersectionObserver(es=>es.forEach(e=>{if(!e.isIntersecting)return;co.unobserve(e.target);const el=e.target,to=+el.dataset.to,t0=performance.now();
+ if(rm){el.textContent=to;return}const tick=t=>{const p=Math.min(1,(t-t0)/1300);el.textContent=Math.round(to*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(tick)};requestAnimationFrame(tick)}),{threshold:.6});
+$$('[data-to]').forEach(el=>co.observe(el));
+const mq=$('.l-marq div');mq.innerHTML+=mq.innerHTML;
+const tl=$('.l-tl'),st=$$('.l-st',tl);
+const prog=()=>{const r=tl.getBoundingClientRect(),p=Math.min(1,Math.max(0,(innerHeight*.62-r.top)/r.height));tl.style.setProperty('--p',p);st.forEach(s=>s.classList.toggle('on',s.getBoundingClientRect().top<innerHeight*.62))};
+addEventListener('scroll',prog,{passive:true});prog();
+if(!rm)$('.l-hero').addEventListener('mousemove',e=>{const x=e.clientX/innerWidth-.5,y=e.clientY/innerHeight-.5;$$('[data-par]').forEach(el=>el.style.transform=`translate(${x*el.dataset.par}px,${y*el.dataset.par}px)`)});
+$$('.bt').forEach(b=>b.addEventListener('pointermove',e=>{const r=b.getBoundingClientRect();b.style.setProperty('--mx',e.clientX-r.left+'px');b.style.setProperty('--my',e.clientY-r.top+'px')}));
+$$('.l-tab button').forEach(b=>b.onclick=()=>{$$('.l-tab button').forEach(x=>x.classList.toggle('on',x==b));$$('.l-pn').forEach(p=>p.classList.toggle('on',p.id==b.dataset.t))});

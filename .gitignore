@@ -1,0 +1,22 @@
+
+# macOS
+.DS_Store
+
+# Backend lama yang tidak akan di-upload
+/backend/
+/backend-files/
+
+# Environment dan kredensial
+.env
+.env.*
+!.env.example
+
+# Dependencies
+/vendor/
+/node_modules/
+
+# Log
+*.log
+
+# File sementara editor
+.vscode/
