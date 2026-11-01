@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{AuthController,ProfileController,DiscoverController,DealController,AdminController};
+use App\Http\Controllers\{AuthController,ProfileController,DiscoverController,DealController,AdminController,DocumentController};
 use App\Http\Middleware\AdminOnly;
 use Illuminate\Support\Facades\Route;
 
@@ -9,8 +9,9 @@ Route::post('/auth/verify', [AuthController::class,'verify'])->middleware('throt
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class,'me']);
     Route::post('/me/plan', [AuthController::class,'setPlan']);
-    Route::post('/profile', [ProfileController::class,'store']);
+    Route::post('/profile', [ProfileController::class,'store'])->middleware('throttle:20,1');
     Route::get('/discover', [DiscoverController::class,'index']);
+    Route::get('/documents/{document}/download', [DocumentController::class,'download']);
 
     Route::get('/deals', [DealController::class,'index']);
     Route::post('/deals', [DealController::class,'store']);
@@ -21,6 +22,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/sign', [DealController::class,'sign']);
         Route::post('/fulfillments', [DealController::class,'fulfil']);
         Route::post('/fulfillments/{fulfillment}/verify', [DealController::class,'verify']);
+        Route::get('/fulfillments/{fulfillment}/download', [DealController::class,'download']);
+        Route::post('/email-report', [DealController::class,'emailReport']);
         Route::post('/end', [DealController::class,'end']);
     });
 

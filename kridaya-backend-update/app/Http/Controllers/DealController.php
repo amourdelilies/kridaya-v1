@@ -1,7 +1,9 @@
 <?php
 namespace App\Http\Controllers;
 use App\Models\{Deal, Fulfillment, User};
+use App\Support\Notify;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class DealController extends Controller {
     private function mine(Request $r, Deal $d): Deal {
@@ -14,17 +16,20 @@ class DealController extends Controller {
     public function index(Request $r) {
         return $r->user()->deals()->with(['event','sponsor','messages','fulfillments'])->latest()->get();
     }
-    /** Kirim minat. Free: 5 pitch per bulan (dihitung di server). */
+    /** Kirim minat. Free: 5 pitch per bulan (dihitung di server). Pihak kedua diberi tahu lewat email. */
     public function store(Request $r) {
         $u = $r->user(); $u->refreshQuota();
         $v = $r->validate(['targets'=>'required|array|max:20','targets.*'=>'integer|exists:users,id']);
         abort_if($u->plan === 'free' && $u->matches_used + count($v['targets']) > 5, 429, 'Kuota pitch Free (5 per bulan) tidak cukup. Upgrade ke Premium.');
         $new = 0;
         foreach ($v['targets'] as $tid) {
-            $o = User::findOrFail($tid); abort_if($o->role === $u->role || $o->role === 'admin', 422, 'Target tidak valid');
+            $o = User::with('profile')->findOrFail($tid); abort_if($o->role === $u->role || $o->role === 'admin', 422, 'Target tidak valid');
             [$e,$s] = $u->role === 'event' ? [$u->id,$o->id] : [$o->id,$u->id];
             $d = Deal::firstOrCreate(['event_user_id'=>$e,'sponsor_user_id'=>$s,'status'=>'pending'], ['initiator_id'=>$u->id,'expires_at'=>now()->addDay()]);
-            $new += $d->wasRecentlyCreated ? 1 : 0; // TODO: queue Mail notifikasi minat masuk
+            if ($d->wasRecentlyCreated) {
+                $new++;
+                Notify::to($o, 'Ada minat kerja sama baru', ($u->profile?->name ?? $u->name).' tertarik bekerja sama denganmu. Buka Workspace untuk menjawab dalam 1x24 jam.');
+            }
         }
         $u->increment('matches_used', $new);
         return response()->json(['ok'=>true,'created'=>$new], 201);
@@ -35,6 +40,8 @@ class DealController extends Controller {
         abort_if($deal->expires_at->isPast(), 410, 'Batas persetujuan sudah lewat');
         $ok = $r->validate(['accept'=>'required|boolean'])['accept'];
         $deal->update($ok ? ['status'=>'active','deadline_at'=>now()->addDays(14)] : ['status'=>'rejected']);
+        Notify::to(User::find($deal->initiator_id), $ok ? 'Minatmu diterima' : 'Minatmu belum diterima',
+            $ok ? 'Kerja sama sudah aktif. Buka Workspace untuk mulai berdiskusi dan membuat MoU.' : 'Pihak lain belum dapat menerima minatmu kali ini.');
         return $deal;
     }
     public function sendMessage(Request $r, Deal $deal) {
@@ -48,18 +55,30 @@ class DealController extends Controller {
     public function fulfil(Request $r, Deal $deal) {
         $this->active($r,$deal);
         abort_unless($deal->event_signed_at && $deal->sponsor_signed_at, 422, 'MoU belum ditandatangani kedua pihak');
-        $v = $r->validate(['title'=>'required|string|max:150','note'=>'nullable|string|max:1000','value'=>'nullable|integer|min:0','file'=>'nullable|file|max:10240']);
+        $v = $r->validate(['title'=>'required|string|max:150','note'=>'nullable|string|max:1000','value'=>'nullable|integer|min:0','file'=>'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png,docx,svg,zip']);
         $f = $r->file('file');
         return $deal->fulfillments()->create([
             'user_id'=>$r->user()->id,'kind'=>$this->side($r,$deal)==='sponsor'?'material':'proof','title'=>$v['title'],
             'note'=>$v['note'] ?? null,'value'=>$v['value'] ?? 0,'path'=>$f?->store("deals/{$deal->id}"),'file_name'=>$f?->getClientOriginalName(),
         ]);
     }
-    /** Hanya pihak lawan dari pengunggah yang boleh memverifikasi. */
     public function verify(Request $r, Deal $deal, Fulfillment $fulfillment) {
         $this->active($r,$deal);
         abort_unless($fulfillment->deal_id === $deal->id && $fulfillment->user_id !== $r->user()->id, 403, 'Hanya pihak lawan yang bisa memverifikasi');
         $fulfillment->update(['verified_at'=>now()]); return $fulfillment;
+    }
+    /** Unduh berkas deliverable. Hanya dua pihak dalam kerja sama. */
+    public function download(Request $r, Deal $deal, Fulfillment $fulfillment) {
+        $this->mine($r,$deal);
+        abort_unless($fulfillment->deal_id === $deal->id && $fulfillment->path && Storage::exists($fulfillment->path), 404, 'File tidak ditemukan di server');
+        return Storage::download($fulfillment->path, $fulfillment->file_name ?: basename($fulfillment->path));
+    }
+    /** Kirim ringkasan kerja sama ke email pengguna. */
+    public function emailReport(Request $r, Deal $deal) {
+        $this->mine($r,$deal); $deal->load('fulfillments');
+        $rows = $deal->fulfillments->map(fn ($f) => '- '.($f->kind==='material'?'Sponsor':'Event').': '.$f->title.' (Rp '.number_format($f->value,0,',','.').') '.($f->verified_at?'[terverifikasi]':'[menunggu]'))->implode("\n");
+        Notify::to($r->user(), 'Ringkasan kerja sama', "Ringkasan kerja sama #{$deal->id}\n\n".($rows ?: 'Belum ada deliverables.'));
+        return ['ok'=>true];
     }
     public function end(Request $r, Deal $deal) {
         $this->active($r,$deal);
