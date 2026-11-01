@@ -2,46 +2,7 @@ const $=(s,e=document)=>e.querySelector(s),$$=(s,e=document)=>[...e.querySelecto
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let S=JSON.parse(localStorage.getItem('kd2')||'null')||{user:null,deals:[],plan:'free',used:0,ok:false,pref:{}};
 const save=()=>localStorage.setItem('kd2',JSON.stringify(S));
-const QUOTA=5,LOC=[
-    'Aceh',
-    'Sumatera Utara',
-    'Sumatera Barat',
-    'Riau',
-    'Kepulauan Riau',
-    'Jambi',
-    'Sumatera Selatan',
-    'Kepulauan Bangka Belitung',
-    'Bengkulu',
-    'Lampung',
-    'DKI Jakarta',
-    'Jawa Barat',
-    'Jawa Tengah',
-    'DI Yogyakarta',
-    'Jawa Timur',
-    'Banten',
-    'Bali',
-    'Nusa Tenggara Barat',
-    'Nusa Tenggara Timur',
-    'Kalimantan Barat',
-    'Kalimantan Tengah',
-    'Kalimantan Selatan',
-    'Kalimantan Timur',
-    'Kalimantan Utara',
-    'Sulawesi Utara',
-    'Gorontalo',
-    'Sulawesi Tengah',
-    'Sulawesi Barat',
-    'Sulawesi Selatan',
-    'Sulawesi Tenggara',
-    'Maluku',
-    'Maluku Utara',
-    'Papua',
-    'Papua Barat',
-    'Papua Selatan',
-    'Papua Tengah',
-    'Papua Pegunungan',
-    'Papua Barat Daya'
-],TYPES=['Cash','Produk','Jasa','Voucher'];
+const QUOTA=5,LOC=['Bandung','Jakarta','Yogyakarta','Surabaya'],TYPES=['Cash','Produk','Jasa','Voucher'];
 const BR={'< Rp10 jt':[0,1e7],'Rp10–30 jt':[1e7,3e7],'> Rp30 jt':[3e7,1e12]};
 const isEv=()=>S.user?.role==='event',pool=()=>isEv()?SPONSORS:EVENTS,find=id=>[...SPONSORS,...EVENTS].find(x=>x.id==id);
 const Rp=n=>'Rp '+Math.round(n||0).toLocaleString('id-ID'),rng=b=>b[0]==b[1]?Rp(b[0]):Rp(b[0]/1e6*1e6).replace(/\.000\.000$/,' jt')+' – '+Rp(b[1]).replace(/\.000\.000$/,' jt');
@@ -60,33 +21,33 @@ const scc=s=>`<span class="sc ${s>=90?'':s>=80?'m':'l'}">${s}% match</span>`;
 const hit=p=>{const f=S.pref;return(!f.c||p.c==f.c)&&(!f.l||p.l==f.l)&&(!f.t||p.t.includes(f.t))&&(!f.b||(p.b[0]<=BR[f.b][1]&&p.b[1]>=BR[f.b][0]))};
 const pcard=(p,cls='',extra='')=>`<div class="card pc ${cls}" data-a="${extra?'pick':'sel'}" data-id="${p.id}">${extra}<div class="top"><div><h3>${esc(p.n)}</h3><span class="mut">${esc(p.c)} · ${esc(p.l)}</span></div>${scc(score(p))}</div><div>${chips(p.t)}</div><div class="mut" style="font-size:13px"><b style="color:var(--ink)">${rng(p.b)}</b> · respon &lt; ${p.sla} jam</div></div>`;
 
-let mode='daftar',step=0,pend=null,tab='fl',dir={q:'',c:'',l:'',t:'',sel:null},pick=new Set(),docs={};
+let reg=null,mode='daftar',step=0,pend=null,tab='fl',dir={q:'',c:'',l:'',t:'',sel:null},pick=new Set(),docs={};
 
 /* ---------- AUTH ---------- */
 function V_auth(){
  if(step)return`<section class="card narrow"><h2>Verifikasi OTP</h2><p class="mut">Kode dikirim ke ${esc(pend.id)}. Untuk demo, pakai 123456.</p><div class="otp">${'<input maxlength="1" inputmode="numeric" aria-label="digit OTP">'.repeat(6)}</div><button class="btn" data-a="otp">Verifikasi</button></section>`;
  return`<section class="card narrow"><div class="tabs"><button data-a="mode" data-m="masuk" class="${mode=='masuk'?'on':''}">Masuk</button><button data-a="mode" data-m="daftar" class="${mode=='daftar'?'on':''}">Daftar</button></div>
- <form data-f="auth">${mode=='daftar'?`<label>Daftar sebagai</label><div class="roles"><label><input type="radio" name="role" value="event" checked>Pihak Event<small>Mencari sponsor</small></label><label><input type="radio" name="role" value="sponsor">Pihak Sponsor<small>Mencari event</small></label></div><label>Nama lengkap / PIC</label><input name="name" required>`:''}
+ <form data-f="auth">${mode=='daftar'?`${reg?`<input type="hidden" name="role" value="${reg}"><div class="rolepill"><b>Mendaftar sebagai ${reg=='event'?'Pihak Event':'Pihak Sponsor'}</b><a href="#/daftar/${reg=='event'?'sponsor':'event'}">Bukan? Daftar sebagai ${reg=='event'?'sponsor':'event'}</a></div>`:`<label>Daftar sebagai</label><div class="roles"><label><input type="radio" name="role" value="event" checked>Pihak Event<small>Mencari sponsor</small></label><label><input type="radio" name="role" value="sponsor">Pihak Sponsor<small>Mencari event</small></label></div>`}<label>Nama lengkap / PIC</label><input name="name" required>`:''}
  <label>No. HP / Email</label><input name="id" required><button class="btn" style="width:100%">Kirim kode OTP</button></form></section>`}
 
 /* ---------- ONBOARDING ---------- */
-function V_onb(){const e=isEv(),p=S.user.profile||S.user.draft||{};docs={...docs,...(p.docs||{})};
- const st=S.ok?3:S.user.profile?2:1,fl=(a,b)=>`<span class="${st>a?'ok':st==a?'on':''}"><i>${st>a?'✓':a}</i>${b}</span>`;
+function V_onb(){const e=isEv(),p=S.user.profile||S.user.draft||{},rj=S.user.profile?.status=='rejected',lk=S.user.profile&&!rj;docs={...docs,...(p.docs||{})};
+ const st=S.ok?3:lk?2:1,fl=(a,b)=>`<span class="${st>a?'ok':st==a?'on':''}"><i>${st>a?'✓':a}</i>${b}</span>`;
  const f=(k,l,ph='',t='text',req=1)=>`<label>${l}</label><input name="${k}" type="${t}" placeholder="${ph}" value="${esc(p[k])}" ${req?'data-r':''}>`;
  const dz=(k,l,req=1)=>`<label class="drop ${docs[k]?'ok':''}"><input type="file" accept=".pdf,.jpg,.jpeg,.png,.docx" hidden data-doc="${k}" ${req?'data-dr':''}><b>${l}</b><span>${docs[k]?'✓ '+esc(docs[k]):'Klik untuk unggah'}</span></label>`;
  const radios=(n,a,type='radio')=>`<div class="opts">${a.map(x=>`<label class="opt"><input type="${type}" name="${n}" value="${x}" ${type=='radio'?(p[n]||a[0])==x:(p[n]||[]).includes(x)?'checked':''}>${x}</label>`).join('')}</div>`;
- return`<div class="card banner"><div><h3>${S.ok?'Akun terverifikasi':S.user.profile?'Dokumen sedang diverifikasi':'Lengkapi identitas & dokumen legal'}</h3><span class="mut">${S.ok?'Kamu bisa menjelajah direktori dan matching.':S.user.profile?'Admin memeriksa maksimal 1x24 jam.':'Admin akan memeriksa dokumen sebelum akunmu aktif (maks. 1x24 jam).'}</span></div>
- <div class="flow">${fl(1,'Isi profil')}<hr>${fl(2,'Validasi admin')}<hr>${fl(3,'Aktif')}</div></div>
+ return`<div class="card banner"><div><h3>${S.ok?'Akun terverifikasi':rj?'Profil perlu diperbaiki':S.user.profile?'Dokumen sedang diverifikasi':(isEv()?'Daftarkan eventmu dan dokumen legalnya':'Daftarkan usahamu dan tawaran dukungannya')}</h3><span class="mut">${S.ok?'Kamu bisa menjelajah direktori dan matching.':rj?'Alasan: '+esc(S.user.profile.note||'tidak dicantumkan')+'. Perbaiki data lalu kirim ulang.':S.user.profile?'Admin memeriksa maksimal 1x24 jam.':'Admin akan memeriksa dokumen sebelum akunmu aktif (maks. 1x24 jam).'}</span></div>
+ <div class="flow">${fl(1,e?'Isi data event':'Isi data usaha')}<hr>${fl(2,'Validasi admin')}<hr>${fl(3,'Aktif')}</div></div>
  <form id="onb" ${S.user.profile?'class="locked"':''}><div class="col3">
  <div class="card"><h3><span>01</span>${e?'Identitas proker':'Identitas usaha'}</h3>${f('n',e?'Nama event / proker':'Nama usaha')}
  <label>Kategori</label>${e?radios('c',['Webinar','Lomba','Seminar','Lainnya']):`<select name="c">${opt(['F&B','Fashion','Teknologi','Jasa','Kecantikan','Lainnya'],'',p.c)}</select>`}
  <label>Lokasi</label><select name="l">${opt(LOC,'',p.l)}</select>
  <label>Deskripsi ${e?'(target peserta, jumlah target, dll)':''}</label><textarea name="d" rows="4" data-r>${esc(p.d)}</textarea>
- ${e?f('b','Badan yang menaungi','mis. BEM Fakultas Ilmu Komputer'):`<div class="two"><div>${f('y','Tahun berdiri','2020','number')}</div><div>${f('nib','Nomor NIB')}</div></div><label>Bentuk dukungan</label>${radios('t',TYPES,'checkbox')}<div class="two"><div>${f('bmin','Dana min (Rp)','','number',0)}</div><div>${f('bmax','Dana maks (Rp)','','number',0)}</div></div>`}</div>
+ ${e?f('b','Badan yang menaungi','mis. BEM Fakultas Ilmu Komputer')+f('bmax','Dana sponsor yang dibutuhkan (Rp)','2000000','number'):`<div class="two"><div>${f('y','Tahun berdiri','2020','number')}</div><div>${f('nib','Nomor NIB')}</div></div><label>Bentuk dukungan</label>${radios('t',TYPES,'checkbox')}<div class="two"><div>${f('bmin','Dana sponsor minimal (Rp)','','number',0)}</div><div>${f('bmax','Dana sponsor maksimal (Rp)','','number',0)}</div></div>`}</div>
  <div class="card"><h3><span>02</span>Kanal komunikasi PIC</h3>${f('m','Email aktif','nama@domain.id','email')}${f('w','No. WhatsApp','+62 812…')}${f('s','Media sosial','@akun',  'text',0)}</div>
  <div class="card"><h3><span>03</span>Dokumen legal</h3>${e?dz('izin','Surat izin kegiatan')+dz('panitia','Susunan kepanitiaan')+dz('rab','RAB')+dz('proposal','Proposal sponsorship')+dz('dok','Dokumentasi (opsional)',0):dz('nib','Dokumen NIB')+dz('izin','Surat izin usaha',0)}<div class="mut" style="font-size:12px;margin-top:12px">PDF/JPG/PNG, maks. 5 MB per file.</div></div></div>
- <label class="opt" style="display:flex;gap:10px;border-radius:12px;padding:12px 16px"><input type="checkbox" id="cm" style="display:block;width:auto" ${S.user.profile?'checked':''}>Saya menyatakan seluruh data dan dokumen di atas benar dan dapat dipertanggungjawabkan.</label>
- <div class="bottom"><div style="flex:1;min-width:180px"><small class="mut">Kelengkapan <b id="pt">0%</b></small><div class="prog"><i id="pb" style="width:0"></i></div></div><div style="display:flex;gap:8px"><button type="button" class="btn ghost" data-a="draft">Simpan draft</button><button type="button" class="btn" data-a="submit" ${S.user.profile?'disabled':''}>Kirim untuk validasi (1x24 jam)</button></div></div></form>`}
+ <label class="opt" style="display:flex;gap:10px;border-radius:12px;padding:12px 16px"><input type="checkbox" id="cm" style="display:block;width:auto" ${lk?'checked':''}>Saya menyatakan seluruh data dan dokumen di atas benar dan dapat dipertanggungjawabkan.</label>
+ <div class="bottom"><div style="flex:1;min-width:180px"><small class="mut">Kelengkapan <b id="pt">0%</b></small><div class="prog"><i id="pb" style="width:0"></i></div></div><div style="display:flex;gap:8px"><button type="button" class="btn ghost" data-a="draft">Simpan draft</button><button type="button" class="btn" data-a="submit" ${lk?'disabled':''}>Kirim untuk validasi (1x24 jam)</button></div></div></form>`}
 const pct=()=>{const r=$$('#onb [data-r]'),d=$$('#onb [data-dr]');const n=r.filter(i=>i.value.trim()).length+d.filter(i=>docs[i.dataset.doc]).length,t=r.length+d.length,v=Math.round(n/t*100);if($('#pb')){$('#pb').style.width=v+'%';$('#pt').textContent=v+'%'}return v};
 const collect=()=>{const f=new FormData($('#onb')),o={};f.forEach((v,k)=>{if(k!='t')o[k]=v});o.t=f.getAll('t');o.docs={...docs};o.b=[+o.bmin||0,+o.bmax||0];return o};
 
@@ -95,9 +56,9 @@ function dres(){const l=pool().filter(p=>(!dir.q||(p.n+p.d+p.c).toLowerCase().in
  const s=find(dir.sel)&&l.find(x=>x.id==dir.sel)||l[0];
  return`<div class="list">${l.map(p=>pcard(p,s?.id==p.id?'sel':'')).join('')||'<p class="mut">Tidak ada hasil. Coba longgarkan filter.</p>'}</div><div class="card stk">${s?detail(s):'<p class="mut">Pilih item untuk melihat detail.</p>'}</div>`}
 function detail(p){const m=S.user.profile||{},sent=busy().includes(p.id),ev=isEv();
- return`<div class="top row"><div><h2 style="margin:0">${esc(p.n)}</h2><span class="mut">${esc(p.c)} · ${esc(p.l)}${p.y?' · sejak '+p.y:''}</span></div>${scc(score(p))}</div><p>${esc(p.d)}</p><div>${chips(p.t)}</div>
+ return`<div class="top row"><div><h2 style="margin:0">${esc(p.n)}</h2><span class="mut">${esc(p.c)} · ${esc(p.l)}${p.y?' · sejak '+esc(p.y):''}</span></div>${scc(score(p))}</div><p>${esc(p.d)}</p><div>${chips(p.t)}</div>
  <div class="kpi"><div><small>${ev?'Dana per sponsor':'Kebutuhan dana'}</small><b style="font-size:.95rem">${rng(p.b)}</b></div><div><small>SLA respon</small><b>&lt; ${p.sla} jam</b></div></div>
- <h3>Kecocokan dengan profilmu</h3><ul class="chk"><li class="${p.l==m.l?'':'no'}">Lokasi ${p.l==m.l?'sama':'berbeda'} (${esc(p.l)})</li><li class="${S.pref.c?p.c==S.pref.c?'':'no':''}">Kategori ${esc(p.c)}</li><li class="${p.t.some(t=>(m.t||[]).includes(t))||!ev?'':'no'}">Bentuk dukungan: ${p.t.join(', ')}</li></ul>
+ <h3>Kecocokan dengan profilmu</h3><ul class="chk"><li class="${p.l==m.l?'':'no'}">Lokasi ${p.l==m.l?'sama':'berbeda'} (${esc(p.l)})</li><li class="${S.pref.c?p.c==S.pref.c?'':'no':''}">Kategori ${esc(p.c)}</li><li class="${p.t.some(t=>(m.t||[]).includes(t))||!ev?'':'no'}">Bentuk dukungan: ${esc(p.t.join(', '))}</li></ul>
  <button class="btn" style="width:100%" data-a="pitch" data-id="${p.id}" ${sent?'disabled':''}>${sent?'Minat sudah dikirim':'Kirim minat'+(left()===null?'':' (1 kuota)')}</button>`}
 function V_dir(){return`<div class="head"><div><h1 class="h1">Direktori ${isEv()?'sponsor':'event'}</h1><p class="mut" style="margin:0">Telusuri pihak terverifikasi, lihat kecocokannya, lalu kirim minat.</p></div><div class="stats"><div class="stat"><small>Terverifikasi</small><b>${pool().length}</b></div><div class="stat"><small>Kerja sama aktif</small><b>${S.deals.filter(d=>d.st=='active').length}</b></div></div></div>
  <div class="filters"><input data-i="q" placeholder="Cari nama, kategori, kata kunci…" value="${esc(dir.q)}" id="dq"><select data-i="c">${opt(cats(),'Semua kategori',dir.c)}</select><select data-i="l">${opt(LOC,'Semua lokasi',dir.l)}</select><select data-i="t">${opt(TYPES,'Semua bentuk dukungan',dir.t)}</select></div><div class="split" id="dres">${dres()}</div>`}
@@ -118,32 +79,37 @@ const dcard=d=>{const p=find(d.pid),l={pending:d.dir=='in'?'Minat masuk':'Menung
 function V_work(id){
  if(!id)return`<div class="head"><div><h1 class="h1">Workspace &amp; Deal</h1><p class="mut" style="margin:0">Semua kerja samamu di satu tempat.</p></div></div>${S.deals.length?`<div class="grid">${S.deals.map(dcard).join('')}</div>`:'<div class="card"><p class="mut">Belum ada kerja sama. Mulai dari <a href="#/matching"><b>Sponsor Matching</b></a>.</p></div>'}`;
  const d=S.deals.find(x=>x.id==id);if(!d)return V_work();const p=find(d.pid),me=isEv()?'ev':'sp',both=d.sg.e&&d.sg.s,st=d.st=='done'?3:both?2:d.mou?1:0,ok=d.fl.filter(x=>x.ok).length,pc=d.fl.length?Math.round(ok/d.fl.length*100):0;
- const days=Math.max(0,Math.ceil((d.at+12096e5-Date.now())/864e5));
- const it=f=>`<div class="it"><div><b>${esc(f.n)}</b><small>${esc(f.n2||'')}${f.fn?' · '+esc(f.fn):''}${f.v?' · '+Rp(f.v):''}</small></div>${f.ok?'<span class="chip">Terverifikasi</span>':f.k!=me?`<button class="btn sm" data-a="vf" data-id="${d.id}" data-f="${f.id}">Verifikasi</button>`:'<span class="chip" style="background:#eee;color:var(--mut)">Menunggu</span>'}</div>`;
+ const days=Math.max(0,Math.ceil((d.at+12096e5-Date.now())/864e5)),cl=[['Buat MoU otomatis',d.mou],['Event menandatangani MoU',d.sg.e],['Sponsor menandatangani MoU',d.sg.s],['Sponsor mengunggah materi',d.fl.some(f=>f.k=='sp')],['Event mengunggah bukti',d.fl.some(f=>f.k=='ev')],['Semua deliverables terverifikasi',d.fl.length>0&&ok==d.fl.length]];
+ const it=f=>`<div class="it"><div><b>${esc(f.n)}</b><small>${esc(f.n2||'')}${f.fn?` · <a href="#" data-a="dlf" data-id="${d.id}" data-f="${f.id}">${esc(f.fn)}</a>`:''}${f.v?' · '+Rp(f.v):''}</small></div>${f.ok?'<span class="chip">Terverifikasi</span>':f.k!=me?`<button class="btn sm" data-a="vf" data-id="${d.id}" data-f="${f.id}">Verifikasi</button>`:'<span class="chip" style="background:#eee;color:var(--mut)">Menunggu</span>'}</div>`;
  const col=(k,t)=>`<div><h3>${t}</h3>${d.fl.filter(f=>f.k==k).map(it).join('')||'<p class="mut" style="font-size:13px">Belum ada.</p>'}${k==me?`<form data-f="file" data-k="${k}" class="card" style="margin-top:12px"><input name="n" placeholder="${k=='sp'?'Judul materi, mis. Logo vektor':'Judul bukti, mis. Foto booth'}" required><input name="n2" placeholder="Catatan" style="margin-top:8px"><div class="two" style="margin-top:8px"><input name="v" type="number" min="0" placeholder="Nilai (Rp)"><input name="fn" type="file"></div><button class="btn sm">Tambah</button></form>`:''}</div>`;
  const main=tab=='fl'?(!both?'<div class="card"><p class="mut">Deliverables dibuka setelah MoU ditandatangani kedua pihak. Buka tab Dokumen &amp; MoU.</p></div>':`<div class="card"><div class="row"><b>${ok} dari ${d.fl.length} terverifikasi</b><span class="mut">Tenggat ${new Date(d.at+12096e5).toLocaleDateString('id-ID',{dateStyle:'long'})}</span></div><div class="prog" style="margin:8px 0 16px"><i style="width:${pc}%"></i></div><div class="two">${col('sp','Dari sponsor (materi)')}${col('ev','Dari event (bukti)')}</div></div>`)
  :`<div class="card"><div class="paper">${d.mou?esc(mouText(d,p)):'MoU belum dibuat.'}</div><div class="row" style="margin-top:14px"><button class="btn lime" data-a="mou" data-id="${d.id}" ${d.mou?'disabled':''}>Buat MoU otomatis</button><div style="display:flex;gap:8px"><button class="btn ghost" data-a="sign" data-k="e" data-id="${d.id}" ${d.mou?'':'disabled'}>${d.sg.e?'✓ ':''}TTD Event</button><button class="btn ghost" data-a="sign" data-k="s" data-id="${d.id}" ${d.mou?'':'disabled'}>${d.sg.s?'✓ ':''}TTD Sponsor</button></div></div></div>`;
- return`<a href="#/workspace" class="mut">← Semua kerja sama</a><div class="head" style="margin-top:10px"><div><h1 class="h1">${esc(p.n)}</h1><p class="mut" style="margin:0">${esc(p.c)} · ${esc(p.l)} · ${p.t.join(', ')}</p></div><div class="stats">${both&&d.st=='active'?`<div class="stat"><small>Sisa waktu</small><b>${days} hari</b></div>`:''}<button class="btn" data-a="rep" data-id="${d.id}">Laporan evaluasi</button></div></div>
+ return`<a href="#/workspace" class="mut">← Semua kerja sama</a><div class="head" style="margin-top:10px"><div><h1 class="h1">${esc(p.n)}</h1><p class="mut" style="margin:0">${esc(p.c)} · ${esc(p.l)} · ${esc(p.t.join(', '))}</p></div><div class="stats">${both&&d.st=='active'?`<div class="stat"><small>Sisa waktu</small><b>${days} hari</b></div>`:''}<button class="btn" data-a="rep" data-id="${d.id}">Laporan evaluasi</button></div></div>
  <div class="card flow" style="margin-bottom:16px;justify-content:space-between;flex-wrap:wrap">${['Match & negosiasi','MoU e-signed','Deliverables','Audit & selesai'].map((s,i)=>`<span class="${i<st?'ok':i==st?'on':''}"><i>${i<st?'✓':i+1}</i>${s}</span>`).join('')}</div>
  <div class="wsp"><div><div class="tabs"><button data-a="tab" data-k="fl" class="${tab=='fl'?'on':''}">Deliverables</button><button data-a="tab" data-k="mou" class="${tab=='mou'?'on':''}">Dokumen &amp; MoU</button></div>${main}</div>
- <div class="card"><h3>Diskusi</h3><div class="chat" id="chat">${d.msgs.map(m=>`<div class="msg ${m.me?'me':''}">${esc(m.t)}</div>`).join('')||'<p class="mut" style="font-size:13px">Mulai obrolan dengan pihak lain.</p>'}</div><form data-f="msg" class="row" style="flex-wrap:nowrap"><input name="t" placeholder="Tulis pesan…" autocomplete="off"><button class="btn sm" style="margin:0">Kirim</button></form></div></div>`}
+ <div><div class="card" style="margin-bottom:16px"><h3>Langkah berikutnya</h3><ul class="chk">${cl.map(([t,v])=>`<li class="${v?'':'no'}">${t}</li>`).join('')}</ul></div><div class="card"><h3>Diskusi</h3><div class="chat" id="chat">${d.msgs.map(m=>`<div class="msg ${m.me?'me':''}">${esc(m.t)}</div>`).join('')||'<p class="mut" style="font-size:13px">Mulai obrolan dengan pihak lain.</p>'}</div><form data-f="msg" class="row" style="flex-wrap:nowrap"><input name="t" placeholder="Tulis pesan…" autocomplete="off"><button class="btn sm" style="margin:0">Kirim</button></form></div></div></div>`}
 function reportHtml(d){const p=find(d.pid),v=d.fl.filter(f=>f.ok).reduce((a,f)=>a+(+f.v||0),0),ok=d.fl.filter(f=>f.ok).length,e=isEv();
- return`<h2 style="margin:0 0 4px">Laporan evaluasi &amp; LPJ akhir</h2><p class="mut" style="margin:0">${esc(e?S.user.profile.n:p.n)} × ${esc(e?p.n:S.user.profile.n)} · ${p.t.join(', ')}</p>
+ return`<h2 style="margin:0 0 4px">Laporan evaluasi &amp; LPJ akhir</h2><p class="mut" style="margin:0">${esc(e?S.user.profile.n:p.n)} × ${esc(e?p.n:S.user.profile.n)} · ${esc(p.t.join(', '))}</p>
  <div class="kpi"><div><small>Deliverables</small><b>${d.fl.length}</b></div><div><small>Terverifikasi</small><b>${ok}</b></div><div><small>Total valuasi</small><b>${Rp(v)}</b></div><div><small>MoU</small><b>${d.sg.e&&d.sg.s?'Lengkap':'Belum'}</b></div></div>
  <table class="tb"><tr><th>Item</th><th>Dari</th><th>Valuasi</th><th>Status</th></tr>${d.fl.map(f=>`<tr><td>${esc(f.n)}</td><td>${f.k=='sp'?'Sponsor':'Event'}</td><td>${Rp(f.v)}</td><td>${f.ok?'✓ Terverifikasi':'Menunggu'}</td></tr>`).join('')||'<tr><td colspan="4" class="mut">Belum ada deliverables.</td></tr>'}</table>
- <div class="row noprint" style="margin-top:20px"><button class="btn ghost" onclick="print()">Unduh / cetak PDF</button><div style="display:flex;gap:8px"><button class="btn ghost" onclick="$('#dlg').close()">Tutup</button><button class="btn" data-a="end" data-id="${d.id}" ${d.st=='done'||ok<d.fl.length||!d.fl.length?'disabled':''}>${d.st=='done'?'Sudah selesai':'Setujui &amp; akhiri kerja sama'}</button></div></div>${ok<d.fl.length&&d.st!='done'?'<p class="mut noprint" style="font-size:12px">Semua deliverables harus terverifikasi sebelum kerja sama diakhiri.</p>':''}`}
+ <div class="row noprint" style="margin-top:20px"><button class="btn ghost" onclick="print()">Unduh / cetak PDF</button><button class="btn ghost" data-a="mail" data-id="${d.id}">Kirim ke email</button><div style="display:flex;gap:8px"><button class="btn ghost" onclick="$('#dlg').close()">Tutup</button><button class="btn" data-a="end" data-id="${d.id}" ${d.st=='done'||ok<d.fl.length||!d.fl.length?'disabled':''}>${d.st=='done'?'Sudah selesai':'Setujui &amp; akhiri kerja sama'}</button></div></div>${ok<d.fl.length&&d.st!='done'?'<p class="mut noprint" style="font-size:12px">Semua deliverables harus terverifikasi sebelum kerja sama diakhiri.</p>':''}`}
 
 /* ---------- ROUTER ---------- */
-function hd(r){const T=[['onboarding','Onboarding & Verifikasi'],['direktori','Eksplorasi Direktori'],['matching',isEv()?'Sponsor Matching':'Event Matching'],['workspace','Workspace & Deal']],q=left();
+function hd(r){const nb=S.deals.filter(d=>d.st=='pending'&&d.dir=='in').length,T=isEv()?[['dashboard','Dashboard'],['onboarding','Profil'],['direktori','Cari Sponsor'],['matching','Matching'],['workspace','Workspace'],['riwayat','Riwayat']]:[['dashboard','Dashboard'],['onboarding','Profil'],['direktori','Cari Event'],['proposal','Proposal'+(nb?` <span class="bd">${nb}</span>`:'')],['workspace','Kerja Sama'],['riwayat','Riwayat']],q=left();
  $('#hd').innerHTML=`<a class="logo" href="index.html">KriDaya</a>${S.user?`<nav class="tabsn">${T.map(([k,l])=>`<a href="#/${k}" class="${r==k?'on':''}">${l}</a>`).join('')}</nav><form data-f="gs"><input id="gs" placeholder="Cari ${isEv()?'sponsor':'event'}…"><kbd>Ctrl K</kbd></form><button class="pill q ${q===null?'pro':''}" data-a="plan" title="Klik untuk simulasi ganti paket">${q===null?'Premium · kuota ∞':'Free · '+q+'/'+QUOTA+' kuota pitch'}</button><button class="pill" data-a="out">Keluar</button>`:''}`}
 function route(){
  const[r,id]=(location.hash.slice(2)||'masuk').split('/');
- if(!S.user&&r!='masuk')return go('/masuk');
- if(S.user&&r=='masuk')return go('/onboarding');
- if(S.user&&!S.ok&&r!='onboarding'){toast('Selesaikan verifikasi dulu');return go('/onboarding')}
- $('#app').innerHTML={masuk:V_auth,onboarding:()=>S.user&&V_onb(),direktori:V_dir,matching:V_match,workspace:()=>V_work(id)}[r]?.()||'';
+ if(r=='masuk')reg=null;
+ if(!S.user&&!['masuk','daftar'].includes(r))return go('/masuk');
+ if(r=='daftar'&&!['event','sponsor'].includes(id))return go('/masuk');
+ if(S.user&&r=='daftar'&&S.user.role==id)return go(S.user.profile?'/dashboard':'/onboarding');
+ if(r=='proposal'&&S.user&&isEv())return go('/dashboard');
+ if(S.user&&r=='masuk')return go(S.user.profile?'/dashboard':'/onboarding');
+ if(S.user&&!S.user.profile&&!['onboarding','daftar'].includes(r))return go('/onboarding');
+ if(S.user&&S.user.profile&&!S.ok&&!['onboarding','dashboard','daftar'].includes(r)){toast('Menunggu verifikasi admin');return go('/dashboard')}
+ $('#app').innerHTML={masuk:V_auth,daftar:()=>V_reg(id),riwayat:V_riw,proposal:V_prop,dashboard:V_home,onboarding:()=>S.user&&V_onb(),direktori:V_dir,matching:V_match,workspace:()=>V_work(id)}[r]?.()||'';
  hd(r);$$('.otp input').forEach((i,k,a)=>i.addEventListener('input',()=>i.value&&a[k+1]?.focus()));
- if(r=='onboarding')pct();const c=$('#chat');if(c)c.scrollTop=1e9}
+ if(r=='onboarding')pct();if(r=='dashboard')dashFx();const c=$('#chat');if(c)c.scrollTop=1e9}
 const go=h=>{location.hash=h;route()};addEventListener('hashchange',route);
 
 const Dl=id=>S.deals.find(x=>x.id==id),mk=pid=>({id:'d'+pid+Date.now()+Math.random().toString(36).slice(2,5),pid,dir:'out',st:'pending',stage:0,msgs:[],sg:{},fl:[],at:Date.now()});
@@ -181,4 +147,122 @@ document.addEventListener('submit',e=>{const f=e.target.dataset.f;if(!f)return;e
  if(f=='msg'&&v.t.trim()){Dl(location.hash.split('/')[2]).msgs.push({t:v.t});save();route()}
  if(f=='file'&&v.n){const fn=e.target.fn?.files?.[0]?.name;Dl(location.hash.split('/')[2]).fl.push({id:'f'+Date.now(),k:e.target.dataset.k,n:v.n,n2:v.n2,v:+v.v||0,fn});save();route()}});
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key=='k'){e.preventDefault();$('#gs')?.focus()}});
+
+/* ---------- DASHBOARD (event dan sponsor) ---------- */
+const IC={link:'<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',bolt:'<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',check:'<path d="M20 6 9 17l-5-5"/>',inbox:'<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/>'};
+const svg=n=>`<svg viewBox="0 0 24 24">${IC[n]}</svg>`;
+function dashFx(){$$('[data-cu]').forEach(el=>{const to=+el.dataset.cu,rp=el.dataset.rp,t0=performance.now(),tick=t=>{const p=Math.min(1,(t-t0)/900),v=to*(1-Math.pow(1-p,3));el.textContent=rp?Rp(v):Math.round(v);if(p<1)requestAnimationFrame(tick)};requestAnimationFrame(tick)})}
+function V_homeOld(){
+ const e=isEv(),m=S.user.profile||{},ok=S.ok,me=e?'ev':'sp',P=d=>find(d.pid)||{n:'Mitra'},ds=S.deals,
+  ac=ds.filter(d=>d.st=='active'),pn=ds.filter(d=>d.st=='pending'),inc=pn.filter(d=>d.dir=='in'),out=pn.filter(d=>d.dir=='out'),dn=ds.filter(d=>d.st=='done'),q=left(),
+  its=ds.flatMap(d=>d.fl),vf=its.filter(f=>f.ok),val=vf.reduce((a,f)=>a+f.v,0),h=new Date().getHours(),
+  sal=h<11?'Selamat pagi':h<15?'Selamat siang':h<18?'Selamat sore':'Selamat malam';
+ const prof=`<div class="card"><div style="display:flex;gap:14px;align-items:center"><span class="av">${esc((m.n||'?').trim()[0]||'?').toUpperCase()}</span><div style="min-width:0"><b>${esc(m.n)}</b><br><small class="mut">${esc(m.c)} · ${esc(m.l)}</small></div></div><div style="margin:12px 0 4px">${chips([ok?'Terverifikasi':m.status=='rejected'?'Ditolak':'Menunggu verifikasi'].concat(m.t||[]))}</div><p class="mut" style="font-size:13px;margin:6px 0 12px">${esc(m.d)}</p><div class="pn-h" style="margin:0"><div><small class="mut">${e?'Dana dibutuhkan':'Rentang dana'}</small><br><b>${e?Rp(+m.bmax||0):rng([+m.bmin||0,+m.bmax||0])}</b></div><a class="btn ghost sm" href="#/onboarding">${m.status=='rejected'?'Perbaiki':'Detail'}</a></div></div>`;
+ if(!ok){const rj=m.status=='rejected';return`<section class="hero2"><div><small>${sal}</small><h1>Halo, ${esc(S.user.name)}</h1><p>${rj?'Profilmu perlu diperbaiki sebelum bisa disetujui.':'Profilmu sedang kami periksa, biasanya selesai dalam maksimal 1x24 jam.'}</p>${rj?'<a class="btn lime" href="#/onboarding">Perbaiki profil</a>':''}</div><div class="hv"><small>Status</small><b>${rj?'Ditolak':'Diperiksa'}</b><span>${rj?esc(m.note||'Alasan tidak dicantumkan'):'Mohon menunggu'}</span></div></section>
+ <div class="dg"><div class="card"><h3>Proses verifikasi</h3><ol class="vs"><li class="d"><i></i><div><b>Profil dikirim</b><small>Dokumen sudah kami terima</small></div></li><li class="${rj?'x':'c'}"><i></i><div><b>Pemeriksaan admin</b><small>${rj?'Perlu perbaikan data':'Sedang berlangsung'}</small></div></li><li><i></i><div><b>Akun aktif</b><small>Direktori, matching, dan workspace terbuka</small></div></li></ol></div><div style="display:grid;gap:18px;align-content:start">${prof}</div></div>`}
+ const tk=(c,i,t,s,a)=>`<div class="tk" style="--c:${c}"><span class="tki">${svg(i)}</span><div><b>${esc(t)}</b><small>${s}</small></div><div class="tka">${a}</div></div>`,todo=[];
+ inc.forEach(d=>todo.push(tk('#d49a2a','bell',P(d).n,(e?'Mengirim tawaran dukungan, menunggu jawabanmu':'Meminta dukunganmu untuk eventnya, jawab dalam 1x24 jam'),`<button class="btn sm" data-a="acc" data-id="${d.id}">Terima</button><button class="btn red sm" data-a="rej" data-id="${d.id}">Tolak</button>`)));
+ const stp=d=>[d.mou,d.sg.e,d.sg.s,d.fl.some(f=>f.k=='sp'),d.fl.some(f=>f.k=='ev'),d.fl.length>0&&d.fl.every(f=>f.ok)],STP=['Buat MoU','TTD Event','TTD Sponsor','Materi sponsor','Bukti event','Verifikasi'];
+ ac.forEach(d=>{const my=e?d.sg.e:d.sg.s,both=d.sg.e&&d.sg.s,mine=d.fl.filter(f=>f.k==me).length,ver=d.fl.filter(f=>!f.ok&&f.k!=me).length;
+  const t=!d.mou?'Buat MoU':!my?'Tanda tangani MoU':both&&ver?`Verifikasi ${ver} item dari pihak lain`:both&&!mine?`Unggah ${e?'bukti pelaksanaan':'materi sponsor'}`:'';
+  if(t)todo.push(tk('#2f5733',/Verifikasi/.test(t)?'check':'bolt',P(d).n,t,`<a class="btn ghost sm" href="#/workspace/${d.id}">Buka</a>`))});
+ const dc=d=>{const s=stp(d),n=s.filter(Boolean).length,p=P(d);return`<div class="dl"><div class="row"><div style="display:flex;gap:12px;align-items:center"><span class="av" style="width:40px;height:40px;font-size:15px">${esc((p.n||'?')[0])}</span><div><b>${esc(p.n)}</b><br><small class="mut">${esc(p.c||'')}${p.l?' · '+esc(p.l):''}</small></div></div><a class="btn sm" href="#/workspace/${d.id}">Buka</a></div><div class="seg">${s.map(x=>`<i class="${x?'on':''}"></i>`).join('')}</div><div class="nx">${n==6?'<b>Semua tahap selesai</b>, siap diakhiri':`${n}/6 tahap · berikutnya: <b>${STP[s.indexOf(false)]}</b>`}</div></div>`};
+ const empty=(t,l,h)=>`<div class="empty">${svg('inbox')}<br>${t}<br><a href="${h}" class="btn ghost sm" style="margin-top:12px">${l}</a></div>`;
+ const rec=pool().filter(p=>!busy().includes(p.id)).sort((a,b)=>score(b)-score(a)).slice(0,3).map(p=>{const sc=score(p);return`<div class="rc"><span class="ring" style="--v:${sc}"><b>${sc}</b></span><div style="flex:1;min-width:0"><b>${esc(p.n)}</b><small class="mut" style="display:block">${esc(p.c)} · ${esc(p.l)}</small><small>${rng(p.b)}</small></div><button class="btn sm" data-a="pitch" data-id="${p.id}">Minat</button></div>`}).join('')||'<p class="mut">Belum ada rekomendasi.</p>';
+ const qc=q===null?`<div class="card"><div class="pn-h"><h3>Paket Premium</h3>${chips(['Aktif'])}</div><p class="mut" style="margin:0;font-size:14px">Pitch tanpa batas dan hingga 20 kandidat di matching.</p></div>`:`<div class="card"><div class="pn-h"><h3>Kuota pitch bulan ini</h3><b>${S.used}/${QUOTA}</b></div><div class="prog"><i style="width:${S.used*100/QUOTA}%"></i></div><p class="mut" style="font-size:13px;margin:10px 0 0">Sisa ${q} pitch. <a href="#" data-a="plan"><b>Coba Premium</b></a> untuk tanpa batas.</p></div>`;
+ const fn=[['Pitch terkirim',ds.filter(d=>d.dir=='out').length],['Dijawab',ds.filter(d=>d.dir=='out'&&d.st!='pending').length],['Kerja sama aktif',ac.length],['Selesai',dn.length]],mx=Math.max(1,...fn.map(x=>x[1])),
+  fnh=`<div class="card"><div class="pn-h"><h3>Perjalanan pencarian sponsor</h3><a href="#/matching">Matching baru</a></div><div class="fnl">${fn.map(([l,n])=>`<div><small>${l}</small><b>${n}</b><span><i style="width:${n*100/mx}%"></i></span></div>`).join('')}</div></div>`;
+ const K=e?[['clock','#6b7a8c',out.length,'Pitch menunggu'],['bell','#d49a2a',inc.length,'Tawaran masuk'],['link','#2f5733',ac.length,'Sponsor aktif'],['bolt','#8a9a1f',q===null?'∞':q,'Sisa kuota pitch'],['check','#2f7d4a',dn.length,'Event terdukung']]:[['bell','#d49a2a',inc.length,'Proposal masuk'],['link','#2f5733',ac.length,'Event didukung'],['clock','#6b7a8c',out.length,'Penawaran terkirim'],['check','#2f7d4a',dn.length,'Kerja sama selesai'],['bolt','#8a9a1f',vf.length,'Item terverifikasi']];
+ return`<section class="hero2"><div><small>${sal}</small><h1>Halo, ${esc(S.user.name)}</h1><p>${todo.length?`Ada <b>${todo.length}</b> hal yang menunggu tindakanmu.`:'Semua beres. Saatnya cari mitra baru.'}</p><div style="display:flex;gap:10px;flex-wrap:wrap">${e?'<a class="btn lime" href="#/matching">Mulai matching sponsor</a><a class="btn ghost" href="#/direktori">Cari sponsor</a>':`<a class="btn lime" href="#/proposal">Lihat proposal masuk${inc.length?' ('+inc.length+')':''}</a><a class="btn ghost" href="#/direktori">Cari event</a>`}</div></div><div class="hv"><small>${e?'Nilai terverifikasi':'Nilai dukungan terverifikasi'}</small><b data-cu="${val}" data-rp="1">${Rp(val)}</b><span>dari ${vf.length} item terverifikasi</span></div></section>
+ <div class="kp">${K.map(([i,c,v,l],n)=>`<a class="k" href="#/${e?(n==3?'matching':'workspace'):(n==0?'proposal':'workspace')}" style="--c:${c}"><i>${svg(i)}</i><small>${l}</small><b ${typeof v=='number'?`data-cu="${v}"`:''}>${v}</b></a>`).join('')}</div>
+ <div class="dg"><div style="display:grid;gap:18px;align-content:start">${e?fnh:''}<div class="card"><div class="pn-h"><h3>${e?'Perlu tindakanmu':'Proposal & tugas untukmu'}</h3>${todo.length?chips([String(todo.length)]):''}</div>${todo.join('')||empty('Tidak ada yang perlu dikerjakan sekarang.','Cari mitra baru','#/direktori')}</div>
+ <div class="card"><div class="pn-h"><h3>Kerja sama berjalan</h3><a href="#/workspace">Semua</a></div>${ac.map(dc).join('')||empty('Belum ada kerja sama aktif.','Mulai matching','#/matching')}${out.length?`<h3 style="margin:20px 0 4px;font-size:.95rem">Menunggu jawaban</h3>${out.map(d=>`<div class="rc"><span class="av" style="width:36px;height:36px;font-size:14px">${esc((P(d).n||'?')[0])}</span><div style="flex:1"><b>${esc(P(d).n)}</b><small class="mut" style="display:block">Maksimal 24 jam</small></div>${chips(['Menunggu'])}</div>`).join('')}`:''}</div></div>
+ <div style="display:grid;gap:18px;align-content:start">${prof}${qc}<div class="card"><div class="pn-h"><h3>${e?'Sponsor yang cocok':'Event yang cocok'}</h3><a href="#/direktori">Lihat semua</a></div>${rec}</div></div></div>`}
+
+
+/* ---------- ALUR DAFTAR TERPISAH + PROPOSAL MASUK (sponsor) ---------- */
+const COPY={event:{k:'Untuk panitia event',h:'Temukan sponsor untuk eventmu.',p:'Daftarkan event, lengkapi dokumen legalnya, lalu bandingkan sponsor yang cocok sekaligus.',s:['Buat akun dan verifikasi OTP','Isi data event dan unggah dokumen','Tunggu verifikasi admin (maks. 1×24 jam)','Cari sponsor dan kirim minat']},
+ sponsor:{k:'Untuk UMKM dan brand',h:'Dukung event mahasiswa yang tepat.',p:'Daftarkan usahamu, terima proposal dari event yang sudah dikurasi, dan pantau hasil eksposurnya.',s:['Buat akun dan verifikasi OTP','Isi data usaha dan unggah NIB','Tunggu verifikasi admin (maks. 1×24 jam)','Terima proposal atau cari event']}};
+function V_reg(role){
+ const nm=role=='event'?'event':'sponsor';
+ if(S.user)return`<section class="card narrow"><h2>Kamu masih masuk sebagai ${S.user.role=='event'?'Pihak Event':'Pihak Sponsor'}</h2><p class="mut">Akun <b>${esc(S.user.name)}</b> masih aktif di browser ini. Untuk mendaftar sebagai ${nm}, keluar dulu dari akun tersebut.</p><div class="row"><a class="btn ghost" href="#/dashboard">Kembali ke dashboard</a><button class="btn" data-a="swap" data-r="${role}">Keluar dan daftar sebagai ${nm}</button></div></section>`;
+ if(reg!==role){reg=role;mode='daftar';step=0}
+ const c=COPY[role];
+ return`<div class="reg"><aside class="regl ${role}"><small>${c.k}</small><h1>${c.h}</h1><p>${c.p}</p><ol>${c.s.map(x=>`<li>${x}</li>`).join('')}</ol></aside>${V_auth()}</div>`}
+function V_prop(){
+ const inc=S.deals.filter(d=>d.st=='pending'&&d.dir=='in'),out=S.deals.filter(d=>d.st=='pending'&&d.dir=='out'),P=d=>find(d.pid)||{n:'Event',t:[],b:[0,0]};
+ return`<div class="head"><div><h1 class="h1">Proposal masuk</h1><p class="mut" style="margin:0">Event yang meminta dukunganmu. Jawab dalam 1×24 jam.</p></div>${chips([inc.length+' menunggu'])}</div>`+
+ (inc.length?`<div class="grid">${inc.map(d=>{const p=P(d);return`<div class="card"><div class="row"><div><h3 style="margin:0">${esc(p.n)}</h3><span class="mut">${esc(p.c||'')} · ${esc(p.l||'')}</span></div>${scc(score(p))}</div><p style="font-size:14px">${esc(p.d||'')}</p><div class="kpi"><div><small>Dana dibutuhkan</small><b style="font-size:.95rem">${rng(p.b)}</b></div><div><small>Dukungan</small><b style="font-size:.95rem">${esc((p.t||[]).join(', ')||'-')}</b></div></div><div style="display:flex;gap:8px"><button class="btn" data-a="acc" data-id="${d.id}">Terima</button><button class="btn red" data-a="rej" data-id="${d.id}">Tolak</button></div></div>`}).join('')}</div>`
+ :`<div class="card"><div class="empty">${svg('inbox')}<br>Belum ada proposal masuk.<br><a href="#/direktori" class="btn ghost sm" style="margin-top:12px">Cari event untuk didukung</a></div></div>`)+
+ (out.length?`<h3 style="margin:28px 0 8px">Penawaran yang kamu kirim</h3><div class="grid">${out.map(d=>`<div class="card"><h3 style="margin:0">${esc(P(d).n)}</h3>${chips(['Menunggu jawaban'])}</div>`).join('')}</div>`:'')}
+
+
+/* ---------- DASHBOARD v3 (layout terpisah event dan sponsor) + RIWAYAT ---------- */
+Object.assign(IC,{x:'<path d="M18 6 6 18M6 6l12 12"/>',doc:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',pen:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',up:'<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 20h16"/>',flag:'<path d="M4 22V4M4 4h12l-2 4 2 4H4"/>',heart:'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>'});
+const ago=t=>{const s=(Date.now()-t)/1e3;return s<60?'baru saja':s<3600?Math.floor(s/60)+' menit lalu':s<86400?Math.floor(s/3600)+' jam lalu':s<604800?Math.floor(s/86400)+' hari lalu':new Date(t).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})};
+function feed(){const ev=[],add=(t,at,ic,c,txt,did)=>at&&ev.push({t,at,ic,c,txt,did});
+ S.deals.forEach(d=>{const n=esc((find(d.pid)||{n:'Mitra'}).n);
+  add('minat',d.ct,'bell','#e0a526',d.dir=='out'?`Kamu mengirim minat ke <b>${n}</b>`:`<b>${n}</b> mengirim minat kepadamu`,d.id);
+  if(d.st=='active'||d.st=='done')add('minat',d.at,'link','#2f5733',`Kerja sama dengan <b>${n}</b> dimulai`,d.id);
+  if(d.st=='rejected')add('minat',d.up,'x','#e2674a',`Minat dengan <b>${n}</b> ditolak`,d.id);
+  if(d.st=='expired')add('minat',d.up,'clock','#6b7a8c',`Minat dengan <b>${n}</b> kedaluwarsa`,d.id);
+  add('dokumen',d.mt,'doc','#1f8a85',`MoU dengan <b>${n}</b> dibuat`,d.id);
+  add('dokumen',d.se,'pen','#1f8a85',`Event menandatangani MoU dengan <b>${n}</b>`,d.id);
+  add('dokumen',d.ss,'pen','#1f8a85',`Sponsor menandatangani MoU dengan <b>${n}</b>`,d.id);
+  d.fl.forEach(f=>{add('item',f.at,'up','#3a6fd8',`${f.k=='sp'?'Sponsor':'Event'} mengunggah <b>${esc(f.n)}</b> (${n})`,d.id);add('item',f.vt,'check','#2f7d4a',`<b>${esc(f.n)}</b> terverifikasi (${n})`,d.id)});
+  add('selesai',d.en,'flag','#2f5733',`Kerja sama dengan <b>${n}</b> diakhiri`,d.id)});
+ return ev.sort((a,b)=>b.at-a.at)}
+const fi=x=>`<a class="fe" data-t="${x.t}" href="#/workspace/${x.did}"><span class="tki" style="--c:${x.c}">${svg(x.ic)}</span><div><div>${x.txt}</div><small>${ago(x.at)}</small></div></a>`;
+const bars=(fe,c1='#2f5733',c2='#9bbf3a')=>{const d0=new Date();d0.setHours(0,0,0,0);const ds=[...Array(14)].map((_,i)=>d0.getTime()-(13-i)*864e5),cn=ds.map(t=>fe.filter(x=>x.at>=t&&x.at<t+864e5).length),mx=Math.max(1,...cn);
+ return`<div class="bars" style="--c1:${c1};--c2:${c2}">${cn.map((c,i)=>`<i title="${c} aktivitas · ${new Date(ds[i]).toLocaleDateString('id-ID',{day:'numeric',month:'short'})}" style="height:${8+c*92/mx}%"></i>`).join('')}</div><small class="mut">Aktivitas 14 hari terakhir</small>`};
+function dp(){
+ const e=isEv(),m=S.user.profile||{},me=e?'ev':'sp',P=d=>find(d.pid)||{n:'Mitra'},ds=S.deals,ac=ds.filter(d=>d.st=='active'),pn=ds.filter(d=>d.st=='pending'),inc=pn.filter(d=>d.dir=='in'),out=pn.filter(d=>d.dir=='out'),dn=ds.filter(d=>d.st=='done'),q=left(),
+  its=ds.flatMap(d=>d.fl),vf=its.filter(f=>f.ok),val=vf.reduce((a,f)=>a+f.v,0),h=new Date().getHours(),sal=h<11?'Selamat pagi':h<15?'Selamat siang':h<18?'Selamat sore':'Selamat malam',fe=feed();
+ const tk=(c,i,t,s,a)=>`<div class="tk" style="--c:${c}"><span class="tki">${svg(i)}</span><div><b>${esc(t)}</b><small>${s}</small></div><div class="tka">${a}</div></div>`,todo=[];
+ if(e)inc.forEach(d=>todo.push(tk('#e0a526','bell',P(d).n,'Mengirim tawaran dukungan, menunggu jawabanmu',`<button class="btn sm" data-a="acc" data-id="${d.id}">Terima</button><button class="btn red sm" data-a="rej" data-id="${d.id}">Tolak</button>`)));
+ ac.forEach(d=>{const my=e?d.sg.e:d.sg.s,both=d.sg.e&&d.sg.s,mine=d.fl.filter(f=>f.k==me).length,ver=d.fl.filter(f=>!f.ok&&f.k!=me).length;
+  const t=!d.mou?'Buat MoU':!my?'Tanda tangani MoU':both&&ver?`Verifikasi ${ver} item dari pihak lain`:both&&!mine?`Unggah ${e?'bukti pelaksanaan':'materi sponsor'}`:'';
+  if(t)todo.push(tk(/Verifikasi/.test(t)?'#2f7d4a':'#1f8a85',/Verifikasi/.test(t)?'check':'bolt',P(d).n,t,`<a class="btn ghost sm" href="#/workspace/${d.id}">Buka</a>`))});
+ const stp=d=>[d.mou,d.sg.e,d.sg.s,d.fl.some(f=>f.k=='sp'),d.fl.some(f=>f.k=='ev'),d.fl.length>0&&d.fl.every(f=>f.ok)],STP=['Buat MoU','TTD Event','TTD Sponsor','Materi sponsor','Bukti event','Verifikasi'];
+ const dc=d=>{const s=stp(d),n=s.filter(Boolean).length,p=P(d);return`<div class="dl"><div class="row"><div style="display:flex;gap:12px;align-items:center"><span class="av" style="width:40px;height:40px;font-size:15px">${esc((p.n||'?')[0])}</span><div><b>${esc(p.n)}</b><br><small class="mut">${esc(p.c||'')}${p.l?' · '+esc(p.l):''}</small></div></div><a class="btn sm" href="#/workspace/${d.id}">Buka</a></div><div class="seg">${s.map(x=>`<i class="${x?'on':''}"></i>`).join('')}</div><div class="nx">${n==6?'<b>Semua tahap selesai</b>, siap diakhiri':`${n}/6 tahap · berikutnya: <b>${STP[s.indexOf(false)]}</b>`}</div></div>`};
+ const empty=(t,l,h)=>`<div class="empty">${svg('inbox')}<br>${t}<br><a href="${h}" class="btn ghost sm" style="margin-top:12px">${l}</a></div>`;
+ const rec=pool().filter(p=>!busy().includes(p.id)).sort((a,b)=>score(b)-score(a)).slice(0,3).map(p=>{const sc=score(p);return`<div class="rc"><span class="ring" style="--v:${sc}"><b>${sc}</b></span><div style="flex:1;min-width:0"><b>${esc(p.n)}</b><small class="mut" style="display:block">${esc(p.c)} · ${esc(p.l)}</small><small>${rng(p.b)}</small></div><button class="btn sm" data-a="pitch" data-id="${p.id}">Minat</button></div>`}).join('')||'<p class="mut">Belum ada rekomendasi.</p>';
+ const tile=(i,c,n,l,href)=>`<a class="kt c3" href="${href}" style="--c:${c}"><span class="kti">${svg(i)}</span><b ${typeof n=='number'?`data-cu="${n}"`:''}>${n}</b><small>${l}</small></a>`;
+ const wait=out.map(d=>`<div class="rc"><span class="av" style="width:36px;height:36px;font-size:14px">${esc((P(d).n||'?')[0])}</span><div style="flex:1"><b>${esc(P(d).n)}</b><small class="mut" style="display:block">Maksimal 24 jam</small></div>${chips(['Menunggu'])}</div>`).join('');
+ const feedCard=(cls,c1,c2)=>`<section class="${cls} card"><div class="pn-h"><h3>Aktivitas terbaru</h3><a href="#/riwayat">Lihat riwayat</a></div>${bars(fe,c1,c2)}<div class="fl">${fe.slice(0,5).map(fi).join('')||empty('Belum ada aktivitas.','Mulai sekarang',e?'#/matching':'#/direktori')}</div></section>`;
+ return{e,m,P,ds,ac,inc,out,dn,q,vf,val,sal,fe,todo,dc,rec,empty,tile,wait,feedCard}}
+function V_homeE(x){const{m,ds,ac,inc,out,dn,q,sal,todo,dc,rec,val,vf,empty,tile,wait,feedCard}=x,
+ fn=[['Pitch',ds.filter(d=>d.dir=='out').length],['Dijawab',ds.filter(d=>d.dir=='out'&&d.st!='pending').length],['Aktif',ac.length],['Selesai',dn.length]],rate=fn[0][1]?Math.round(fn[1][1]*100/fn[0][1]):0,qr=q===null?100:Math.max(0,q)*100/QUOTA;
+ return`<div class="bn">
+ <section class="c8 hero2"><div style="flex:1;min-width:250px"><small>${sal} · ${esc(m.n)}</small><h1>Halo, ${esc(S.user.name)}</h1><p>${todo.length?`Ada <b>${todo.length}</b> hal yang menunggu tindakanmu.`:'Semua beres. Saatnya cari sponsor baru.'}</p><div class="fz">${fn.map(([l,n],i)=>`<div><b data-cu="${n}">${n}</b><small>${l}</small></div>${i<3?'<span>›</span>':''}`).join('')}</div><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px"><a class="btn lime" href="#/matching">Mulai matching</a><a class="btn ghost" href="#/direktori">Cari sponsor</a></div></div><div class="hv"><small>Tingkat respon</small><b><span data-cu="${rate}">${rate}</span>%</b><span>${fn[1][1]} dari ${fn[0][1]} pitch dijawab</span></div></section>
+ <section class="c4 card"><div class="pn-h"><h3>Kuota pitch</h3>${chips([q===null?'Premium':'Free'])}</div><div style="display:flex;gap:16px;align-items:center"><span class="ring big" style="--v:${qr};--rc:#e0a526"><b>${q===null?'∞':q}</b></span><div><p class="mut" style="margin:0 0 6px;font-size:13px">${q===null?'Pitch tanpa batas.':`Sisa ${q} dari ${QUOTA} pitch bulan ini.`}</p><a href="#" data-a="plan"><b>${q===null?'Kembali ke Free':'Coba Premium'}</b></a></div></div></section>
+ ${tile('clock','#e2674a',out.length,'Pitch menunggu','#/workspace')}${tile('bell','#e0a526',inc.length,'Tawaran masuk','#/workspace')}${tile('link','#2f5733',ac.length,'Sponsor aktif','#/workspace')}${tile('heart','#1f8a85',dn.length,'Event terdukung','#/riwayat')}
+ <section class="c7 card segw"><div class="pn-h"><h3>Tugasmu</h3><div class="sg2"><button class="on" data-a="seg" data-v="a">Tindakan <i>${todo.length}</i></button><button data-a="seg" data-v="b">Menunggu <i>${out.length}</i></button></div></div><div data-p="a">${todo.join('')||empty('Tidak ada yang perlu dikerjakan sekarang.','Cari sponsor baru','#/direktori')}</div><div data-p="b" hidden>${wait||empty('Tidak ada pitch yang menunggu.','Kirim minat','#/matching')}</div></section>
+ <section class="c5 card"><div class="pn-h"><h3>Sponsor yang cocok</h3><a href="#/direktori">Lihat semua</a></div>${rec}</section>
+ <section class="c7 card"><div class="pn-h"><h3>Kerja sama berjalan</h3>${chips([Rp(val)+' terverifikasi'])}</div>${ac.map(dc).join('')||empty('Belum ada kerja sama aktif.','Mulai matching','#/matching')}</section>
+ ${feedCard('c5','#2f5733','#9bbf3a')}</div>`}
+function V_homeS(x){const{m,ds,ac,inc,out,dn,q,sal,todo,dc,rec,val,vf,fe,empty,P,feedCard}=x,
+ pp=inc.map(d=>{const p=P(d),sc=score(p);return`<div class="pp card"><div class="row" style="flex-wrap:nowrap"><div style="min-width:0"><h3 style="margin:0">${esc(p.n)}</h3><span class="mut">${esc(p.c||'')} · ${esc(p.l||'')}</span></div><span class="ring" style="--v:${sc};--rc:#e2674a"><b>${sc}</b></span></div><p class="mut" style="font-size:13.5px;margin:10px 0">${esc((p.d||'').slice(0,110))}${(p.d||'').length>110?'…':''}</p>${chips(p.t||[])}<p style="margin:8px 0 14px"><small class="mut">Dana dibutuhkan</small><br><b>${rng(p.b)}</b></p><div style="display:flex;gap:8px"><button class="btn" data-a="acc" data-id="${d.id}">Terima</button><button class="btn red" data-a="rej" data-id="${d.id}">Tolak</button></div></div>`}).join(''),
+ done=dn.map(d=>`<div class="rc"><span class="av" style="width:36px;height:36px;font-size:14px">${esc((P(d).n||'?')[0])}</span><div style="flex:1"><b>${esc(P(d).n)}</b><small class="mut" style="display:block">${d.fl.filter(f=>f.ok).length} item · ${Rp(d.fl.filter(f=>f.ok).reduce((a,f)=>a+f.v,0))}</small></div><a class="btn ghost sm" href="#/workspace/${d.id}">Lihat</a></div>`).join('');
+ return`<div class="bn">
+ <section class="c12 hero2 sp"><div style="flex:1;min-width:260px"><small>${sal} · ${esc(m.n)}</small><h1>Halo, ${esc(S.user.name)}</h1><p>${inc.length?`Ada <b>${inc.length}</b> proposal event yang menunggu keputusanmu.`:'Belum ada proposal baru. Jelajahi event yang cocok dengan usahamu.'}</p><div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn lime" href="#/proposal">Lihat proposal${inc.length?' ('+inc.length+')':''}</a><a class="btn ghost" href="#/direktori">Cari event</a><a class="btn ghost" href="#/matching">Event matching</a></div></div><div class="fz sx">${[['Proposal masuk',inc.length],['Event didukung',ac.length],['Selesai',dn.length],['Item terverifikasi',vf.length]].map(([l,n])=>`<div><b data-cu="${n}">${n}</b><small>${l}</small></div>`).join('')}</div></section>
+ <section class="c12"><div class="pn-h"><h3 style="margin:0">Proposal masuk</h3><a href="#/proposal">Semua</a></div>${pp?`<div class="pcar">${pp}</div>`:`<div class="card">${empty('Belum ada proposal masuk.','Cari event untuk didukung','#/direktori')}</div>`}</section>
+ <section class="c8 card segw"><div class="pn-h"><h3>Event yang kamu dukung</h3><div class="sg2"><button class="on" data-a="seg" data-v="a">Berjalan <i>${ac.length}</i></button><button data-a="seg" data-v="b">Tugas <i>${todo.length}</i></button><button data-a="seg" data-v="c">Selesai <i>${dn.length}</i></button></div></div><div data-p="a">${ac.map(dc).join('')||empty('Belum ada event yang kamu dukung.','Cari event','#/direktori')}</div><div data-p="b" hidden>${todo.join('')||empty('Tidak ada tugas saat ini.','Lihat riwayat','#/riwayat')}</div><div data-p="c" hidden>${done||empty('Belum ada kerja sama selesai.','Lihat riwayat','#/riwayat')}</div></section>
+ <div class="c4 rs2" style="display:grid;gap:18px;align-content:start"><section class="card"><div class="pn-h"><h3>Profil usaha</h3><a href="#/onboarding">Detail</a></div><div style="display:flex;gap:14px;align-items:center"><span class="av" style="background:linear-gradient(135deg,#e2674a,#e0a526)">${esc((m.n||'?')[0])}</span><div style="min-width:0"><b>${esc(m.n)}</b><br><small class="mut">${esc(m.c)} · ${esc(m.l)}</small></div></div><div style="margin:12px 0 4px">${chips(m.t||[])}</div><small class="mut">Rentang dana</small><br><b>${rng([+m.bmin||0,+m.bmax||0])}</b></section>
+ <section class="card"><div class="pn-h"><h3>Dampak dukunganmu</h3></div><b style="font:700 1.8rem var(--hf)" data-cu="${val}" data-rp="1">${Rp(val)}</b><p class="mut" style="font-size:13px;margin:2px 0 14px">nilai dukungan terverifikasi</p>${bars(fe,'#e2674a','#e0a526')}</section>
+ <section class="card"><div class="pn-h"><h3>Event yang cocok</h3><a href="#/direktori">Semua</a></div>${rec}</section></div>
+ ${feedCard('c8','#e2674a','#e0a526')}</div>`}
+function V_home(){if(!S.ok)return V_homeOld();const x=dp();return isEv()?V_homeE(x):V_homeS(x)}
+function V_riw(){
+ const fe=feed(),P=d=>find(d.pid)||{n:'Mitra'},L={active:'Aktif',done:'Selesai',pending:'Menunggu',rejected:'Ditolak',expired:'Kedaluwarsa'},F=[['all','Semua'],['minat','Minat'],['dokumen','Dokumen'],['item','Deliverables'],['selesai','Selesai']],tg=d=>d.fl.filter(f=>f.ok).reduce((a,f)=>a+f.v,0);
+ return`<div class="head"><div><h1 class="h1">Riwayat</h1><p class="mut" style="margin:0">Semua aktivitas dan arsip kerja samamu.</p></div><button class="btn ghost" data-a="csv">Unduh CSV</button></div>
+ <div class="card segw"><div class="sg2" style="margin-bottom:16px"><button class="on" data-a="seg" data-v="a">Aktivitas <i>${fe.length}</i></button><button data-a="seg" data-v="b">Arsip kerja sama <i>${S.deals.length}</i></button></div>
+ <div data-p="a"><div class="chp">${F.map(([v,l],i)=>`<button class="${i?'':'on'}" data-a="flt" data-v="${v}">${l}</button>`).join('')}</div><div class="fl" id="fl">${fe.map(fi).join('')||'<p class="mut">Belum ada aktivitas.</p>'}</div></div>
+ <div data-p="b" hidden><input data-riw placeholder="Cari mitra…" style="margin-bottom:12px"><div style="overflow-x:auto"><table class="tb"><tr><th>Mitra</th><th>Status</th><th>Dimulai</th><th>Item</th><th>Nilai</th><th></th></tr>${S.deals.slice().sort((a,b)=>b.ct-a.ct).map(d=>`<tr class="rw" data-q="${esc(P(d).n.toLowerCase())}"><td><b>${esc(P(d).n)}</b></td><td>${chips([L[d.st]])}</td><td>${new Date(d.ct).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'})}</td><td>${d.fl.filter(f=>f.ok).length}/${d.fl.length}</td><td>${Rp(tg(d))}</td><td>${['active','done'].includes(d.st)?`<a href="#/workspace/${d.id}">Buka</a>`:''}</td></tr>`).join('')||'<tr><td colspan="6" class="mut">Belum ada kerja sama.</td></tr>'}</table></div></div></div>`}
+Object.assign(A,{
+ seg:e=>{const w=e.closest('.segw');$$('[data-a=seg]',w).forEach(b=>b.classList.toggle('on',b==e));$$('[data-p]',w).forEach(p=>p.hidden=p.dataset.p!=e.dataset.v)},
+ flt:e=>{$$('.chp button').forEach(b=>b.classList.toggle('on',b==e));$$('#fl .fe').forEach(i=>i.hidden=e.dataset.v!='all'&&i.dataset.t!=e.dataset.v)},
+ csv:()=>{const c=v=>'"'+String(v??'').replace(/^([=+\-@])/,"'$1").replace(/"/g,'""')+'"',rows=[['Mitra','Status','Dimulai','Item','Nilai terverifikasi']].concat(S.deals.map(d=>[(find(d.pid)||{}).n,d.st,new Date(d.ct).toISOString().slice(0,10),d.fl.length,d.fl.filter(f=>f.ok).reduce((a,f)=>a+f.v,0)])),b=new Blob([rows.map(r=>r.map(c).join(',')).join('\n')],{type:'text/csv'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='riwayat-kridaya.csv';a.click()}});
+document.addEventListener('input',e=>{if(e.target.dataset.riw!=null){const q=e.target.value.toLowerCase();$$('.rw').forEach(r=>r.hidden=!r.dataset.q.includes(q))}});
+
 route();
