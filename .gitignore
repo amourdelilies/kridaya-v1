@@ -3,7 +3,6 @@
 .DS_Store
 
 # Backend lama yang tidak akan di-upload
-/backend/
 /backend-files/
 
 # Environment dan kredensial

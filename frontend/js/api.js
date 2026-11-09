@@ -37,10 +37,7 @@ document.addEventListener('submit',e=>{const f=e.target.dataset.f,t=e.target,v=O
  if(f=='auth')api('/auth/otp',{method:'POST',body:{identifier:v.id,name:v.name,role:v.role}}).then(()=>{pend={id:v.id};step=1;route()}).catch(x=>toast(x.message));
  if(f=='msg'&&v.t.trim())run(()=>api(`/deals/${did}/messages`,{method:'POST',body:{body:v.t}}));
  if(f=='file'&&v.n){const o=new FormData();o.append('title',v.n);o.append('note',v.n2||'');o.append('value',v.v||0);if(t.fn.files[0])o.append('file',t.fn.files[0]);run(()=>api(`/deals/${did}/fulfillments`,{method:'POST',body:o}))}},true);
-/* halaman admin: antrean verifikasi profil */
-async function admin(){hd('admin');try{const l=(await api('/admin/profiles?status=pending')).data;
- $('#app').innerHTML=`<div class="head"><div><h1 class="h1">Verifikasi profil</h1><p class="mut" style="margin:0">${l.length} menunggu</p></div></div><div class="grid">${l.map(p=>`<div class="card"><h3>${esc(p.name)}</h3><span class="mut">${esc(p.category)} · ${esc(p.location)} · ${esc(p.user.role)}</span><p>${esc(p.description)}</p><p class="mut" style="font-size:13px">Dokumen: ${p.user.documents.map(d=>`<a href="#" data-a="dldoc" data-id="${d.id}" data-n="${esc(d.type)}">${esc(d.type)}</a>`).join(', ')||'-'}</p><div style="display:flex;gap:8px"><button class="btn sm" data-a="adm" data-id="${p.id}" data-s="approved">Setujui</button><button class="btn red sm" data-a="adm" data-id="${p.id}" data-s="rejected">Tolak</button></div></div>`).join('')||'<p class="mut">Tidak ada antrean.</p>'}</div>`}catch(x){toast(x.message)}}
-const _route=route;route=function(){return location.hash.startsWith('#/admin')&&S.user?.role=='admin'?admin():_route()};
+const _route=route;route=function(){const a=location.hash.startsWith('#/admin')&&S.user?.role=='admin';document.body.classList.toggle('is-adm',a);return a?admin():_route()};
 removeEventListener('hashchange',_route);addEventListener('hashchange',route);
 addEventListener('focus',async()=>{if(!S.user||S.user.role=='admin'||$('#dlg').open||($('#onb')&&!S.user.profile)||document.activeElement.matches('input,textarea,select'))return;try{await sync();route()}catch{}});
 (async()=>{if(localStorage.kdt){try{await sync();if(S.user.role=='admin')location.hash='/admin'}catch{localStorage.removeItem('kdt');S.user=null}}route()})();

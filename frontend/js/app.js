@@ -120,6 +120,7 @@ function reportHtml(d){const p=find(d.pid),v=d.fl.filter(f=>f.ok).reduce((a,f)=>
 
 /* ---------- ROUTER ---------- */
 function hd(r){
+ if(S.user&&S.user.role=='admin'&&typeof adShell=='function'){adShell('cek');return}
  const lg=!!S.user,e=lg&&isEv(),nb=S.deals.filter(d=>d.st=='pending'&&d.dir=='in').length,q=lg?left():0;
  document.body.classList.toggle('has-sb',lg);
  if(!lg){$('#hd').innerHTML='<a class="logo" href="index.html">KriDaya</a>';$('#sb').innerHTML='';return}
@@ -135,6 +136,7 @@ function route(){
  if(r=='daftar'&&!['event','sponsor'].includes(id))return go('/masuk');
  if(S.user&&r=='daftar'&&S.user.role==id)return go(S.user.profile?'/dashboard':'/onboarding');
  if(r=='proposal'&&S.user&&isEv())return go('/dashboard');
+ if(S.user&&S.user.role=='admin')return go('/admin');
  if(S.user&&r=='masuk')return go(S.user.profile?'/dashboard':'/onboarding');
  if(S.user&&!S.user.profile&&!['onboarding','daftar'].includes(r))return go('/onboarding');
  if(S.user&&S.user.profile&&!S.ok&&!['onboarding','dashboard','daftar'].includes(r)){toast('Menunggu verifikasi admin');return go('/dashboard')}
