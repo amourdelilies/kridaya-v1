@@ -3,12 +3,12 @@ const API='http://localhost:8000/api',files={};
 const api=async(p,{method='GET',body}={})=>{const fm=body instanceof FormData,
  r=await fetch(API+p,{method,body:fm?body:body&&JSON.stringify(body),headers:{Accept:'application/json',...(body&&!fm?{'Content-Type':'application/json'}:{}),...(localStorage.kdt?{Authorization:'Bearer '+localStorage.kdt}:{})}});
  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.message||'Error '+r.status);return j};
-const nP=(p,own)=>{const x=p.extra||{};return{id:p.user_id,n:p.name,c:p.category,l:p.location,d:p.description,t:p.types||[],sla:24,status:p.status,note:p.note,y:x.y,nib:x.nib,m:x.m,w:x.w,s:x.s,bmin:x.bmin,bmax:x.bmax,b:own&&S.user.role=='event'?x.badan:[+x.bmin||0,+x.bmax||0]}};
+const nP=(p,own)=>{const x=p.extra||{};return{id:p.user_id,n:p.name,c:p.category,l:p.location,d:p.description,t:p.types||[],sla:24,logo:x.logo,status:p.status,note:p.note,y:x.y,nib:x.nib,m:x.m,w:x.w,s:x.s,bmin:x.bmin,bmax:x.bmax,b:own&&S.user.role=='event'?x.badan:[+x.bmin||0,+x.bmax||0]}};
 const nD=d=>{const me=S.user.id,ev=d.event_user_id==me;return{id:d.id,pid:ev?d.sponsor_user_id:d.event_user_id,dir:d.initiator_id==me?'out':'in',st:d.status,ct:Date.parse(d.created_at),up:Date.parse(d.updated_at),mt:d.mou_at?Date.parse(d.mou_at):0,se:d.event_signed_at?Date.parse(d.event_signed_at):0,ss:d.sponsor_signed_at?Date.parse(d.sponsor_signed_at):0,en:d.ended_at?Date.parse(d.ended_at):0,
- at:d.deadline_at?Date.parse(d.deadline_at)-12096e5:Date.parse(d.created_at),mou:!!d.mou_at,sg:{e:!!d.event_signed_at,s:!!d.sponsor_signed_at},
+ at:d.deadline_at?Date.parse(d.deadline_at)-12096e5:Date.parse(d.created_at),mou:!!d.mou_at,ce:d.event_sign_code,cs:d.sponsor_sign_code,pitch:d.pitch||'',sg:{e:!!d.event_signed_at,s:!!d.sponsor_signed_at},
  msgs:d.messages.map(m=>({t:m.body,me:m.user_id==me,at:Date.parse(m.created_at)})),fl:d.fulfillments.map(f=>({id:f.id,k:f.kind=='material'?'sp':'ev',n:f.title,n2:f.note,v:+f.value,fn:f.file_name,ok:!!f.verified_at,at:Date.parse(f.created_at),vt:f.verified_at?Date.parse(f.verified_at):0}))}};
 async function sync(){const u=await api('/me');S.user={id:u.id,name:u.name,role:u.role,profile:null};
- if(u.profile)S.user.profile={...nP(u.profile,1),docs:Object.fromEntries((u.documents||[]).map(d=>[d.type,d.path.split('/').pop()]))};
+ if(u.profile)S.user.profile={...nP(u.profile,1),docs:Object.fromEntries((u.documents||[]).map(d=>[d.type,d.path.split('/').pop()])),dl:(u.documents||[]).map(d=>({id:d.id,type:d.type,name:d.path.split('/').pop()}))};
  S.plan=u.plan;S.used=u.matches_used;S.ok=u.profile?.status=='approved';SPONSORS.length=EVENTS.length=0;S.deals=[];
  if(S.ok&&u.role!='admin'){(u.role=='event'?SPONSORS:EVENTS).push(...(await api('/discover')).map(p=>nP(p)));S.deals=(await api('/deals')).map(nD)}}
 const swap=r=>{localStorage.removeItem('kdt');Object.assign(S,{user:null,deals:[],ok:false,plan:'free',used:0,pref:{}});SPONSORS.length=EVENTS.length=0;for(const k in files)delete files[k];docs={};step=0;reg=null;go('/daftar/'+r)};
@@ -21,7 +21,7 @@ Object.assign(A,{
   if(isEv()&&f.get('b'))o.append('extra[badan]',f.get('b'));if(isEv()&&f.get('bmax'))o.append('extra[bmin]',f.get('bmax'));Object.entries(files).forEach(([k,v])=>o.append('docs['+k+']',v));
   run(()=>api('/profile',{method:'POST',body:o}).then(()=>{toast('Terkirim untuk validasi');location.hash='/dashboard'}))},
  pitch:e=>run(()=>api('/deals',{method:'POST',body:{targets:[+id(e)]}}).then(()=>toast('Minat terkirim, menunggu jawaban ≤ 24 jam'))),
- batch:()=>run(async()=>{await api('/deals',{method:'POST',body:{targets:[...pick]}});pick.clear();location.hash='/workspace'}),
+ batch:()=>run(async()=>{await api('/deals',{method:'POST',body:{targets:[...pick],pitch:(mt.pitch||'').slice(0,500)}});pick.clear();location.hash='/workspace'}),
  acc:e=>run(async()=>{await api(`/deals/${id(e)}/respond`,{method:'POST',body:{accept:true}});location.hash='/workspace/'+id(e)}),
  rej:e=>run(()=>api(`/deals/${id(e)}/respond`,{method:'POST',body:{accept:false}})),
  mou:e=>run(()=>api(`/deals/${id(e)}/mou`,{method:'POST'})),
@@ -53,3 +53,6 @@ Object.assign(A,{dlf:e=>dl(`/deals/${id(e)}/fulfillments/${e.dataset.f}/download
  mail:e=>api(`/deals/${id(e)}/email-report`,{method:'POST'}).then(()=>alert('Ringkasan dikirim ke emailmu.')).catch(x=>alert(x.message))});
 
 Object.assign(A,{swap:e=>swap(e.dataset.r)});
+
+document.addEventListener('change',e=>{const t=e.target;if(t.id!='lg'||!t.files[0])return;const f=t.files[0];if(f.size>2*1024*1024){t.value='';return toast('Logo maksimal 2 MB')}
+ const o=new FormData();o.append('logo',f);run(()=>api('/profile/logo',{method:'POST',body:o}).then(()=>toast('Logo diperbarui')))});

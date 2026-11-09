@@ -1,15 +1,17 @@
 <?php
-use App\Http\Controllers\{AuthController,ProfileController,DiscoverController,DealController,AdminController,DocumentController};
+use App\Http\Controllers\{AuthController,ProfileController,DiscoverController,DealController,AdminController,DocumentController,VerifyController};
 use App\Http\Middleware\AdminOnly;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/auth/otp', [AuthController::class,'otp'])->middleware('throttle:5,1');
 Route::post('/auth/verify', [AuthController::class,'verify'])->middleware('throttle:10,1');
+Route::get('/verify/{code}', [VerifyController::class,'show'])->middleware('throttle:30,1'); // publik
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class,'me']);
     Route::post('/me/plan', [AuthController::class,'setPlan']);
     Route::post('/profile', [ProfileController::class,'store'])->middleware('throttle:20,1');
+    Route::post('/profile/logo', [ProfileController::class,'logo'])->middleware('throttle:10,1');
     Route::get('/discover', [DiscoverController::class,'index']);
     Route::get('/documents/{document}/download', [DocumentController::class,'download']);
 
