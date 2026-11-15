@@ -19,3 +19,12 @@ COPY . /var/www/html
 
 # Arahkan DocumentRoot Apache ke public folder Laravel
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
+
+# Nonaktifkan MPM event/worker yang sering konflik, lalu aktifkan prefork
+RUN a2dismod mpm_event mpm_worker && a2enmod mpm_prefork
+
+# Arahkan DocumentRoot Apache ke public folder Laravel
+ENV APACHE_DOCUMENT_ROOT /var/www/html/public
+
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
