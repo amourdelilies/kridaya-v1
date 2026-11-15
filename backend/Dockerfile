@@ -11,11 +11,9 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install gd pdo_mysql zip
 
-# Hapus modul MPM konflik secara mutlak dan aktifkan prefork & rewrite
-RUN rm -f /etc/apache2/mods-enabled/mpm_event.* \
-    && rm -f /etc/apache2/mods-enabled/mpm_worker.* \
-    && ln -s /etc/apache2/mods-available/mpm_prefork.conf /etc/apache2/mods-enabled/ \
-    && ln -s /etc/apache2/mods-available/mpm_prefork.load /etc/apache2/mods-enabled/ \
+# Nonaktifkan MPM event/worker dan aktifkan prefork dengan aman
+RUN a2dismod -f mpm_event mpm_worker \
+    && a2enmod mpm_prefork \
     && a2enmod rewrite
 
 # Salin seluruh file backend ke direktori web server
