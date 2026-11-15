@@ -19,4 +19,3 @@ COPY . /var/www/html
 
 # Arahkan DocumentRoot Apache ke public folder Laravel
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-V
