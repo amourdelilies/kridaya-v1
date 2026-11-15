@@ -1,0 +1,32 @@
+# @baseUrl = http://127.0.0.1:8000/api
+@baseUrl = https://kridaya-v1-forked-production.up.railway.app/api
+
+### 1. Test Kirim OTP (Publik)
+POST {{baseUrl}}/auth/otp
+Content-Type: application/json
+Accept: application/json
+
+{
+    "identifier": "coba@gmail.com"
+}
+
+### 2. Test Verifikasi OTP (Publik)
+POST {{baseUrl}}/auth/verify
+Content-Type: application/json
+Accept: application/json
+
+{
+    "phone": "081234567890",
+    "otp": "123456"
+}
+
+### 3. Test Ambil Data Profil Saya (Butuh Token Sanctum)
+# (Ganti token di bawah dengan token asli yang Anda dapatkan dari hasil login/verify)
+GET {{baseUrl}}/me
+Authorization: Bearer 1|MASUKKAN_TOKEN_ANDA_DISINI
+Accept: application/json
+
+### 4. Test Ambil Daftar Deals (Butuh Token Sanctum)
+GET {{baseUrl}}/deals
+Authorization: Bearer 1|MASUKKAN_TOKEN_ANDA_DISINI
+Accept: application/json
