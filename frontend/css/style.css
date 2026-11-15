@@ -240,3 +240,15 @@ body.is-adm .sb{background:#11181d}.adtag{font:700 10px var(--hf);letter-spacing
 .pv{margin-top:14px}.pv img,.pv iframe{width:100%;border:1px solid var(--ln);border-radius:12px;background:#fff}.pv iframe{height:520px}.pv img{max-height:520px;object-fit:contain}
 .sg2{display:inline-flex;gap:2px;background:rgba(13,43,26,.08);border-radius:999px;padding:4px}.sg2 button{border:0;background:none;padding:8px 16px;border-radius:999px;font:600 13px inherit;color:var(--mut);cursor:pointer}.sg2 button.on{background:#fff;color:var(--ink);box-shadow:0 4px 12px -6px rgba(13,43,26,.4)}.sg2 i{font-style:normal;background:var(--lime);border-radius:9px;padding:1px 7px;margin-left:6px;font-size:11px;color:var(--deep)}
 @media(max-width:1100px){.vp{grid-template-columns:1fr}.vq,.vk{max-height:none;border:0;border-bottom:1px solid var(--ln)}.vd{max-height:none}.ss.five{grid-template-columns:1fr 1fr}}
+
+/* ===== perbaikan UX ===== */
+.obw{display:flex;align-items:center;gap:10px;max-width:680px;margin:8px auto 16px}.obw hr{flex:1;min-width:16px;border:0;border-top:2px solid var(--line)}
+.obi{display:inline-flex;align-items:center;gap:8px;border:0;background:none;font:600 14px inherit;color:var(--mut);cursor:pointer}.obi i{width:28px;height:28px;border-radius:50%;background:#e4e1d4;display:grid;place-items:center;font:700 12px var(--hf);font-style:normal;transition:.2s}
+.obi.on{color:var(--ink)}.obi.on i{background:var(--lime);box-shadow:0 0 0 4px rgba(198,241,53,.35)}.obi.d i{background:var(--g);color:#fff}
+.col3.stp{display:block;max-width:680px;margin:0 auto}.col3.stp>.card{animation:up .35s both}
+.err{border-color:#d6401c!important;background:#fff6f3!important}.em{display:block;color:#d6401c;font-size:12.5px;margin:4px 0 0}.drop.err{border-color:#d6401c;background:#fff6f3}
+.bw{position:relative;margin-right:12px}.bell{position:relative;width:42px;height:42px;border-radius:50%;border:1.5px solid var(--deep);background:#fff;display:grid;place-items:center;cursor:pointer;color:var(--deep);transition:transform .15s,background .15s}.bell:hover{background:var(--lime);transform:rotate(-8deg)}.bell svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.bd2{position:absolute;top:-5px;right:-5px;background:var(--hot);color:#fff;font:700 10px/1 var(--hf);border-radius:9px;padding:3px 6px;font-style:normal}
+.pop{position:absolute;right:0;top:52px;width:320px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 24px 44px -20px rgba(13,43,26,.45);padding:8px;z-index:40}.pop a{display:block;padding:10px 12px;border-radius:10px;text-decoration:none;color:inherit;font-size:14px}.pop a:hover{background:#f4fbd6}.pop small{display:block;color:var(--mut);padding:8px 12px}
+.dcl{display:grid;gap:6px;margin:10px 0}.dcl>div{display:flex;justify-content:space-between;align-items:center;font-size:13.5px;padding:8px 12px;background:#faf8f1;border-radius:10px}
+.mbn{display:grid;gap:8px;align-content:start}.mbn h3{margin:0;font-size:1.3rem}.mbn p{margin:0}.mbn .btn{justify-self:start;margin-top:6px}
