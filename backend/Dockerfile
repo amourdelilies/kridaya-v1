@@ -40,11 +40,13 @@ ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# Buat script startup: bersihkan MPM konflik, jalankan migrasi database, lalu jalankan Apache
+# Buat script startup: bersihkan MPM konflik, cache konfigurasi, jalankan migrasi database, lalu jalankan Apache
 RUN echo '#!/bin/bash\n\
 rm -f /etc/apache2/mods-enabled/mpm_event.*\n\
 rm -f /etc/apache2/mods-enabled/mpm_worker.*\n\
 a2enmod mpm_prefork\n\
+php artisan config:cache\n\
+php artisan route:cache\n\
 php artisan migrate --force\n\
 exec apache2-foreground' > /usr/local/bin/start-apache.sh \
     && chmod +x /usr/local/bin/start-apache.sh
