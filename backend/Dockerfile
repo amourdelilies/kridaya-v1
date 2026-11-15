@@ -1,6 +1,6 @@
 FROM php:8.4-apache
 
-# Install ekstensi yang dibutuhkan Laravel
+# Install ekstensi sistem yang dibutuhkan Laravel & Composer
 RUN apt-get update && apt-get install -y \
     libpng-dev \
     libjpeg-dev \
@@ -8,14 +8,24 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     zip \
     unzip \
+    git \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install gd pdo_mysql zip
+
+# Install Composer resmi ke dalam container
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Aktifkan mod_rewrite Apache
 RUN a2enmod rewrite
 
-# Salin seluruh file backend ke direktori web server
+# Salin seluruh file project ke direktori web server
 COPY . /var/www/html
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Jalankan composer install otomatis untuk menghasilkan autoload yang valid
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Arahkan DocumentRoot Apache ke public folder Laravel
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
