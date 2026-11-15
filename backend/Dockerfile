@@ -11,17 +11,16 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install gd pdo_mysql zip
 
-# Aktifkan mod_rewrite Apache
-RUN a2enmod rewrite
+# Atur Apache agar hanya menggunakan mpm_prefork dan menghindari konflik
+RUN rm -f /etc/apache2/mods-enabled/mpm_event.load \
+    && rm -f /etc/apache2/mods-enabled/mpm_event.conf \
+    && rm -f /etc/apache2/mods-enabled/mpm_worker.load \
+    && rm -f /etc/apache2/mods-enabled/mpm_worker.conf \
+    && a2enmod mpm_prefork \
+    && a2enmod rewrite
 
 # Salin seluruh file backend ke direktori web server
 COPY . /var/www/html
-
-# Arahkan DocumentRoot Apache ke public folder Laravel
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-
-# Nonaktifkan MPM event/worker yang sering konflik, lalu aktifkan prefork
-RUN a2dismod mpm_event mpm_worker && a2enmod mpm_prefork
 
 # Arahkan DocumentRoot Apache ke public folder Laravel
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
