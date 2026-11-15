@@ -27,17 +27,25 @@ WORKDIR /var/www/html
 # Jalankan composer install otomatis untuk menghasilkan autoload yang valid
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
+# Berikan izin akses penuh ke folder storage dan bootstrap/cache
+RUN mkdir -p /var/www/html/storage/framework/sessions \
+    && mkdir -p /var/www/html/storage/framework/views \
+    && mkdir -p /var/www/html/storage/framework/cache \
+    && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
+    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+
 # Arahkan DocumentRoot Apache ke public folder Laravel
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# Buat script startup untuk membersihkan modul MPM konflik saat runtime, lalu jalankan Apache
+# Buat script startup: bersihkan MPM konflik, jalankan migrasi database, lalu jalankan Apache
 RUN echo '#!/bin/bash\n\
 rm -f /etc/apache2/mods-enabled/mpm_event.*\n\
 rm -f /etc/apache2/mods-enabled/mpm_worker.*\n\
 a2enmod mpm_prefork\n\
+php artisan migrate --force\n\
 exec apache2-foreground' > /usr/local/bin/start-apache.sh \
     && chmod +x /usr/local/bin/start-apache.sh
 
