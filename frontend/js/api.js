@@ -1,5 +1,5 @@
 /* Lapisan API: menimpa data mock di app.js dengan data dari Laravel. Muat SETELAH app.js. */
-const API='http://localhost:8000/api',files={};
+const API='https://kridaya-v1-forked-production.up.railway.app/api',files={};
 const api=async(p,{method='GET',body}={})=>{const fm=body instanceof FormData,
  r=await fetch(API+p,{method,body:fm?body:body&&JSON.stringify(body),headers:{Accept:'application/json',...(body&&!fm?{'Content-Type':'application/json'}:{}),...(localStorage.kdt?{Authorization:'Bearer '+localStorage.kdt}:{})}});
  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.message||'Error '+r.status);return j};

@@ -136,7 +136,7 @@ function route(){
  if(!S.user&&!['masuk','daftar'].includes(r))return go('/masuk');
  if(r=='daftar'&&!['event','sponsor'].includes(id))return go('/masuk');
  if(S.user&&r=='daftar'&&S.user.role==id)return go(S.user.profile?'/dashboard':'/onboarding');
- if(r=='proposal'&&S.user&&isEv())return go('/dashboard');
+ if(r=='proposal'&&S.user&&isEv())return go('/dashboard'); 
  if(S.user&&S.user.role=='admin')return go('/admin');
  if(S.user&&r=='masuk')return go(S.user.profile?'/dashboard':'/onboarding');
  if(S.user&&!S.user.profile&&!['onboarding','daftar'].includes(r))return go('/onboarding');
