@@ -128,7 +128,7 @@ function hd(r){
  const T=e?[['dashboard','Dashboard','dashboard'],['onboarding','Profil','user'],['direktori','Cari Sponsor','search'],['matching','Matching','layers'],['workspace','Workspace','brief'],['riwayat','Riwayat','clock']]:[['dashboard','Dashboard','dashboard'],['onboarding','Profil','user'],['direktori','Cari Event','search'],['proposal','Proposal','inbox'],['workspace','Kerja Sama','brief'],['riwayat','Riwayat','clock']];
  const nt=notifs();$('#hd').innerHTML=`<span class="bw"><button class="bell" data-a="bell" aria-label="Notifikasi" title="Notifikasi">${svg('bell')}${nt.length?`<em class="bd2">${nt.length}</em>`:''}</button><div class="pop" id="pop" hidden>${nt.length?nt.map(x=>`<a href="${x.h}">${x.t}</a>`).join(''):'<small>Tidak ada notifikasi baru.</small>'}</div></span><form data-f="gs"><input id="gs" placeholder="Cari ${e?'sponsor':'event'}…"><kbd>Ctrl K</kbd></form>`;
  $('#sb').innerHTML=`<a class="sb-lg" href="index.html">KriDaya</a><nav>${T.map(([k,l,i])=>`<a href="#/${k}" class="${r==k?'on':''}">${svg(i)}<span>${l}</span>${k=='proposal'&&nb?`<em>${nb}</em>`:''}</a>`).join('')}</nav>
- <div class="sb-b">${q===null?'<div class="sb-q"><small>Paket</small><b>Premium</b><a href="#" data-a="plan">Kembali ke Free</a></div>':`<div class="sb-q"><small>Kuota pitch bulan ini</small><b>${S.used}/${QUOTA}</b><span class="thin"><i style="width:${S.used*100/QUOTA}%"></i></span><a href="#" data-a="plan">Coba Premium</a></div>`}<div class="sb-u"><div><b>${esc(S.user.name)}</b><small>${e?'Pihak Event':'Pihak Sponsor'}</small></div><button data-a="out" title="Keluar" aria-label="Keluar">${svg('out')}</button></div></div>`}
+ <div class="sb-b">${q===null?'<div class="sb-q"><small>Paket</small><b>Premium</b><a href="#/paket">Kelola paket</a></div>':`<div class="sb-q"><small>Kuota pitch bulan ini</small><b>${S.used}/${QUOTA}</b><span class="thin"><i style="width:${S.used*100/QUOTA}%"></i></span><a href="#/paket">Lihat paket</a></div>`}<div class="sb-u"><div><b>${esc(S.user.name)}</b><small>${e?'Pihak Event':'Pihak Sponsor'}</small></div><button data-a="out" title="Keluar" aria-label="Keluar">${svg('out')}</button></div></div>`}
 function route(){
  const[r,id]=(location.hash.slice(2)||'masuk').split('/');
  if(r=='verifikasi'){hd(r);$('#app').innerHTML=V_ver(decodeURIComponent(id||''));vfx(decodeURIComponent(id||''));return}
@@ -141,7 +141,7 @@ function route(){
  if(S.user&&r=='masuk')return go(S.user.profile?'/dashboard':'/onboarding');
  if(S.user&&!S.user.profile&&!['onboarding','daftar'].includes(r))return go('/onboarding');
  if(S.user&&S.user.profile&&!S.ok&&!['onboarding','dashboard','daftar'].includes(r)){toast('Menunggu verifikasi admin');return go('/dashboard')}
- $('#app').innerHTML={masuk:V_auth,daftar:()=>V_reg(id),riwayat:V_riw,proposal:V_prop,dashboard:V_home,onboarding:()=>S.user&&(S.user.profile&&S.user.profile.status!='rejected'?V_prof():V_onb()),direktori:V_dir,matching:V_match,workspace:()=>V_work(id)}[r]?.()||'';
+ $('#app').innerHTML={masuk:V_auth,daftar:()=>V_reg(id),paket:V_paket,riwayat:V_riw,proposal:V_prop,dashboard:V_home,onboarding:()=>S.user&&(S.user.profile&&S.user.profile.status!='rejected'?V_prof():V_onb()),direktori:V_dir,matching:V_match,workspace:()=>V_work(id)}[r]?.()||'';
  hd(r);$$('.otp input').forEach((i,k,a)=>i.addEventListener('input',()=>i.value&&a[k+1]?.focus()));
  if(r=='onboarding'&&$('#onb')){obInit();pct()}if($('#rs'))rsTick(45);if(r=='dashboard')dashFx();const c=$('#chat');if(c)c.scrollTop=1e9}
 const go=h=>{location.hash=h;route()};addEventListener('hashchange',route);
@@ -340,5 +340,16 @@ Object.assign(A,{
 document.addEventListener('click',e=>{if(!e.target.closest?.('.bw')){const p=$('#pop');if(p)p.hidden=true}});
 document.addEventListener('input',e=>{const t=e.target;if(!t.closest?.('#onb'))return;t.classList.remove('err');const w=t.closest('.drop')||t;w.classList.remove('err');if(w.nextElementSibling?.classList.contains('em'))w.nextElementSibling.remove();obSaveD()});
 document.addEventListener('change',e=>{const t=e.target;if(!t.closest?.('#onb'))return;const w=t.closest('.drop')||t;w.classList.remove('err');if(w.nextElementSibling?.classList.contains('em'))w.nextElementSibling.remove();obSaveD()});
+
+/* ---------- HALAMAN PAKET ---------- */
+const PLANS={free:{n:'Free',price:'Rp 0',pitch:'5 pitch per bulan',cand:'5 kandidat per matching'},premium:{n:'Premium',price:null,pitch:'Pitch tanpa batas',cand:'Hingga 20 kandidat per matching'}};
+function V_paket(){
+ const pr=S.plan=='premium',q=left(),d=new Date(),nx=new Date(d.getFullYear(),d.getMonth()+1,1).toLocaleDateString('id-ID',{day:'numeric',month:'long'}),
+  feat=['Direktori '+(isEv()?'sponsor':'event')+' lengkap','Workspace, MoU dengan barcode, dan laporan','Pratinjau dan unduh dokumen','Notifikasi tugas dan pesan'];
+ const card=(k,cur)=>{const p=PLANS[k];return`<article class="pcard2 ${k=='premium'?'pro':''} ${cur?'cur':''}">${cur?'<span class="pl-tag">Paketmu saat ini</span>':''}<small class="lb">${p.n}</small><h2>${p.price||'Harga menyusul'}</h2><ul class="pl-ul"><li><b>${p.pitch}</b></li><li><b>${p.cand}</b></li>${feat.map(f=>`<li>${f}</li>`).join('')}</ul>${cur?'':k=='premium'?'<button class="btn lime" data-a="plan">Aktifkan Premium (demo)</button>':'<button class="btn ghost" data-a="plan">Kembali ke Free (demo)</button>'}</article>`};
+ return`<div class="dsh"><header class="dhd"><div><h1 class="pt">Paket</h1><p class="sub">Paketmu saat ini: <b>${pr?'Premium':'Free'}</b>.</p></div></header>
+ <section class="pnl"><div class="ph"><h3>Pemakaian bulan ini</h3><span class="ct">${q===null?'Tanpa batas':'Reset '+nx}</span></div>${q===null?'<p class="mut" style="margin:6px 0 0">Pitch tidak dibatasi pada paket Premium.</p>':`<div style="display:flex;justify-content:space-between;margin:8px 0 6px"><b>${S.used} dari ${QUOTA} pitch terpakai</b><span class="mut">Sisa ${q}</span></div><div class="prog"><i style="width:${S.used*100/QUOTA}%"></i></div>`}</section>
+ <div class="plans2">${card('free',!pr)}${card('premium',pr)}</div>
+ <section class="pnl"><div class="ph"><h3>Soal pembayaran</h3></div><p class="mut" style="margin:6px 0 0">Pembayaran Premium belum tersedia. Saat ini admin KriDaya mengaktifkannya secara manual. Tombol di atas hanya berfungsi pada mode demo lokal.</p></section></div>`}
 
 route();

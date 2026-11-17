@@ -28,7 +28,7 @@ Object.assign(A,{
  sign:e=>(e.dataset.k=='e')!=isEv()?toast('Kamu hanya bisa menandatangani sisimu sendiri'):run(()=>api(`/deals/${id(e)}/sign`,{method:'POST'})),
  vf:e=>run(()=>api(`/deals/${id(e)}/fulfillments/${e.dataset.f}/verify`,{method:'POST'})),
  end:e=>run(async()=>{await api(`/deals/${id(e)}/end`,{method:'POST'});$('#dlg').close();toast('Kerja sama diakhiri')}),
- plan:()=>run(()=>api('/me/plan',{method:'POST',body:{plan:S.plan=='free'?'premium':'free'}})),
+ plan:()=>run(()=>api('/me/plan',{method:'POST',body:{plan:S.plan=='free'?'premium':'free'}}).catch(()=>{throw new Error('Premium diaktifkan oleh admin. Pembayaran belum tersedia.')})),
  out:()=>{localStorage.removeItem('kdt');for(const k in files)delete files[k];docs={};Object.assign(S,{user:null,deals:[],ok:false,plan:'free',used:0,pref:{}});SPONSORS.length=EVENTS.length=0;step=0;go('/masuk')},
  adm:e=>api('/admin/profiles/'+id(e),{method:'POST',body:{status:e.dataset.s,note:e.dataset.s=='rejected'?(prompt('Alasan penolakan (akan dilihat pengguna):')||''):''}}).then(()=>{toast('Tersimpan');admin()}).catch(x=>toast(x.message))});
 document.addEventListener('change',e=>{const t=e.target;if(t.dataset.doc&&t.files[0])files[t.dataset.doc]=t.files[0]});

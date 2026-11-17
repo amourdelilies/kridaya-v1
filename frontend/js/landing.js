@@ -14,3 +14,5 @@ addEventListener('scroll',prog,{passive:true});prog();
 if(!rm)$('.l-hero').addEventListener('mousemove',e=>{const x=e.clientX/innerWidth-.5,y=e.clientY/innerHeight-.5;$$('[data-par]').forEach(el=>el.style.transform=`translate(${x*el.dataset.par}px,${y*el.dataset.par}px)`)});
 $$('.bt').forEach(b=>b.addEventListener('pointermove',e=>{const r=b.getBoundingClientRect();b.style.setProperty('--mx',e.clientX-r.left+'px');b.style.setProperty('--my',e.clientY-r.top+'px')}));
 $$('.l-tab button').forEach(b=>b.onclick=()=>{$$('.l-tab button').forEach(x=>x.classList.toggle('on',x==b));$$('.l-pn').forEach(p=>p.classList.toggle('on',p.id==b.dataset.t))});
+
+$$('.l-faq details').forEach(d=>d.addEventListener('toggle',()=>{if(d.open)$$('.l-faq details').forEach(o=>{if(o!==d)o.open=false})}));
