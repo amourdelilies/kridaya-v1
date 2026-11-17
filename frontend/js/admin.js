@@ -63,11 +63,112 @@ async function adDeals(){
  <section class="tbw"><div class="tsc"><table class="tb2"><thead><tr><th>Event</th><th>Sponsor</th><th>Status</th><th>Dibuat</th><th>Item</th><th>Penanda</th></tr></thead><tbody>${ds.map(d=>`<tr class="adr" data-bad="${d.flags.length?1:0}"><td><b>${esc(d.event)}</b></td><td>${esc(d.sponsor)}</td><td><span class="stl ${d.status=='active'?'on':''}">${L[d.status]||d.status}</span></td><td>${fmtD(d.created_at)}</td><td>${d.items}</td><td>${d.flags.map(f=>`<span class="sla over">${esc(f)}</span>`).join(' ')||'–'}</td></tr>`).join('')||'<tr><td colspan="6" class="mut" style="padding:24px 16px">Belum ada kerja sama.</td></tr>'}</tbody></table></div></section></div>`}
 
 /* --- Pengguna --- */
-async function adUsers(){
- const[us,st]=await Promise.all([api('/admin/users'),api('/admin/stats')]);AD.users=us;AD.stats=st;adShell('pengguna');
- const SL={approved:'Disetujui',pending:'Menunggu',rejected:'Ditolak'};
- $('#app').innerHTML=`<div class="dsh"><header class="dhd"><div><h1 class="pt">Pengguna</h1><p class="sub">${us.length} akun. Premium bisa diaktifkan manual sampai pembayaran tersedia (tercatat di log audit).</p></div><input data-riw placeholder="Cari nama atau email…" style="max-width:260px"></header>
- <section class="tbw"><div class="tsc"><table class="tb2"><thead><tr><th>Akun</th><th>Peran</th><th>Profil</th><th>Status</th><th>Paket</th><th>Terdaftar</th><th></th></tr></thead><tbody>${us.map(u=>`<tr class="rw" data-q="${esc((u.name+' '+u.identifier+' '+(u.profile||'')).toLowerCase())}"><td><b>${esc(u.name)}</b><small>${esc(u.identifier)}</small></td><td>${u.role=='event'?'Event':'Sponsor'}</td><td>${esc(u.profile||'–')}</td><td>${u.status?`<span class="stl ${u.status=='approved'?'on':u.status=='pending'?'am':''}">${SL[u.status]}</span>`:'–'}</td><td>${u.plan=='premium'?'Premium':'Free'}</td><td>${fmtD(u.created_at)}</td><td class="ta"><button class="btn ghost sm" data-a="adplan" data-id="${u.id}" data-v="${u.plan=='premium'?'free':'premium'}">${u.plan=='premium'?'Jadikan Free':'Aktifkan Premium'}</button></td></tr>`).join('')||'<tr><td colspan="7" class="mut" style="padding:24px 16px">Belum ada pengguna.</td></tr>'}</tbody></table></div></section></div>`}
+async function adUsers() {
+    const [us, st] = await Promise.all([
+        api('/admin/users'),
+        api('/admin/stats')
+    ]);
+
+    AD.users = us;
+    AD.stats = st;
+    adShell('pengguna');
+
+    const SL = {
+        approved: 'Disetujui',
+        pending: 'Menunggu',
+        rejected: 'Ditolak'
+    };
+
+    $('#app').innerHTML = `
+    <div class="dsh">
+        <header class="dhd">
+            <div>
+                <h1 class="pt">Pengguna</h1>
+                <p class="sub">${us.length} akun. Premium bisa diaktifkan manual sampai pembayaran tersedia (tercatat di log audit).</p>
+            </div>
+            <input data-riw placeholder="Cari nama atau email…" style="max-width:260px">
+        </header>
+
+        <section class="tbw">
+            <div class="tsc">
+                <table class="tb2">
+                    <thead>
+                        <tr>
+                            <th>Akun</th>
+                            <th>Peran</th>
+                            <th>Profil</th>
+                            <th>Status</th>
+                            <th>Paket</th>
+                            <th>Terdaftar</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        ${us.map(u => {
+                            const roleLabel = {
+                                event: 'Event',
+                                sponsor: 'Sponsor',
+                                admin: 'Administrator'
+                            }[u.role] || u.role;
+
+                            const statusLabel =
+                                SL[u.status] || 'Belum ada profil';
+
+                            const isAdmin = u.role === 'admin';
+
+                            return `
+                            <tr class="rw"
+                                data-q="${esc((u.name + ' ' + u.identifier + ' ' + (u.profile || '')).toLowerCase())}">
+
+                                <td>
+                                    <b>${esc(u.name)}</b>
+                                    <small>${esc(u.identifier)}</small>
+                                </td>
+
+                                <td>${esc(roleLabel)}</td>
+
+                                <td>${esc(u.profile || '–')}</td>
+
+                                <td>
+                                    <span class="stl ${
+                                        u.status === 'approved' ? 'on' :
+                                        u.status === 'pending' ? 'am' : ''
+                                    }">
+                                        ${statusLabel}
+                                    </span>
+                                </td>
+
+                                <td>${u.plan === 'premium' ? 'Premium' : 'Free'}</td>
+
+                                <td>${fmtD(u.created_at)}</td>
+
+                                <td class="ta">
+                                    ${!isAdmin ? `
+                                        <button class="btn ghost sm"
+                                            data-a="adplan"
+                                            data-id="${u.id}"
+                                            data-v="${u.plan === 'premium' ? 'free' : 'premium'}">
+                                            ${u.plan === 'premium' ? 'Jadikan Free' : 'Aktifkan Premium'}
+                                        </button>
+                                    ` : '–'}
+                                </td>
+                            </tr>
+                            `;
+                        }).join('') || `
+                            <tr>
+                                <td colspan="7" class="mut" style="padding:24px 16px">
+                                    Belum ada pengguna.
+                                </td>
+                            </tr>
+                        `}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>`;
+}
+
 
 /* --- Log audit --- */
 async function adLog(){
