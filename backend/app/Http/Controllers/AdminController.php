@@ -177,6 +177,34 @@ public function setPlan(Request $r, User $user)
     ]);
 }
 
+public function logs()
+{
+    return DB::table('audit_logs')
+        ->leftJoin('users as admins', 'audit_logs.admin_id', '=', 'admins.id')
+        ->select(
+            'audit_logs.*',
+            'admins.name as admin_name'
+        )
+        ->orderByDesc('audit_logs.created_at')
+        ->limit(100)
+        ->get()
+        ->map(function ($log) {
+            return [
+                'at' => $log->created_at,
+                'admin' => $log->admin_name,
+                'action' => $log->action,
+                'label' => $log->label,
+                'target' => match ($log->target_type) {
+                    'user' => 'Pengguna',
+                    'profile' => 'Profil',
+                    default => $log->target_type,
+                },
+                'note' => $log->note,
+            ];
+        })
+        ->values();
+}
+
 public function index(Request $r)
 {
     return Profile::with('user.documents')
@@ -217,6 +245,18 @@ public function index(Request $r)
     public function decide(Request $r, Profile $profile) {
         $v = $r->validate(['status'=>'required|in:approved,rejected','note'=>'nullable|string|max:500']);
         $profile->update(['status'=>$v['status'],'note'=>$v['status']==='rejected' ? ($v['note'] ?? null) : null]);
+        DB::table('audit_logs')->insert([
+    'admin_id' => $r->user()->id,
+    'action' => $v['status'] === 'approved' ? 'approve' : 'reject',
+    'target_type' => 'profile',
+    'target_id' => $profile->id,
+    'label' => $profile->name,
+    'note' => $v['status'] === 'rejected'
+        ? ($v['note'] ?? null)
+        : 'Profil disetujui',
+    'created_at' => now(),
+    'updated_at' => now(),
+]);
         Notify::to($profile->user, $v['status']==='approved' ? 'Profilmu disetujui' : 'Profilmu perlu diperbaiki',
             $v['status']==='approved' ? 'Akunmu sudah aktif. Silakan masuk dan mulai mencari mitra.' : 'Profilmu belum disetujui. Alasan: '.($v['note'] ?: 'tidak dicantumkan').'. Perbaiki data lalu kirim ulang.');
         return $profile;
